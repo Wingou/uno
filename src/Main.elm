@@ -7,6 +7,7 @@ import String exposing (fromInt)
 import List exposing (map, head, tail, reverse, filter)
 import Debug exposing (log)
 
+type Stack = Hand | Draw | Discard
 
 type Color
     = Red
@@ -36,7 +37,6 @@ type alias Game =
     , drawStack : List Card
     , discardStack : List Card
     }
-
 
 type Model
     = NotStarted
@@ -142,11 +142,11 @@ playingView : Game -> Html Msg
 playingView game =
     div []
         [ h3 [] [ text "players : ", text (firstPlayer game.players).name ]
-        , hr [] <| map (\player -> displayPlayer player) game.players
+        , hr [] [ displayPlayers game.players]
         , h3 [] [ text "drawStack" ]
-        , hr [] <| map (\drawCard -> displayCard drawCard) game.drawStack
+        , hr [] [displayCards game.drawStack]
         , h3 [] [ text "discardStack" ]
-        , hr [] <| map (\discardCard -> displayCard discardCard) game.discardStack
+        , hr [] [displayCards game.discardStack]
         ]
 
 noPlayer : Player
@@ -170,8 +170,21 @@ firstPlayer listPlayer =
         Nothing ->
             noPlayer
 
+displayPlayers : List Player -> Html Msg
+displayPlayers players =
+   div [] (map (\p -> displayPlayer p) players)
+
+displayPlayer : Player -> Html Msg
+displayPlayer player =
+    div [] [ text player.name, displayCards player.hand ]
+
+
+displayCards : List Card -> Html Msg
+displayCards cards =
+    div []  (map (\c -> displayCard c) cards)
+
 displayCard : Card -> Html Msg
-displayCard c =
+displayCard c  =
         a[
             onClick (CardPlayed c)
         ][
@@ -179,14 +192,9 @@ displayCard c =
         ]
 
 
-displayCards : List Card -> Html Msg
-displayCards cards =
-    div []  (map (\c -> displayCard c) cards)
 
 
-displayPlayer : Player -> Html Msg
-displayPlayer player =
-    div [] [ text player.name, displayCards player.hand ]
+
 
 convertColorToString : Color -> String
 convertColorToString color =
