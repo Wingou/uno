@@ -251,8 +251,8 @@ updateModel c model =
 
 update : Msg -> Model -> Model
 update msg model =
-    case msg of
-        RequestedStartGame ->
+    case (msg, model) of
+        (RequestedStartGame, _ ) ->
             Playing
                 {
                       currentPlayer = firstPlayer playersInit,
@@ -262,16 +262,16 @@ update msg model =
                       discardStack = discardStackInit
                 }
 
-        CardPlayed cardPlayed ->
-          Playing {
-                      currentPlayer = firstPlayer (permutePlayer playersInit),
-                      currentCardPlayed = cardPlayed,
-                      players = permutePlayer (omitPlayedCard cardPlayed playersInit),
-                      drawStack = drawStackInit,
-                      discardStack = cardPlayed::discardStackInit
-                } 
+        (CardPlayed cardPlayed, Playing game ) ->
+            Playing {game |  
+                  currentPlayer = firstPlayer <| permutePlayer game.players,
+                  currentCardPlayed = cardPlayed,
+                  players = permutePlayer <| omitPlayedCard cardPlayed game.players,
+                  discardStack = cardPlayed::game.discardStack
+             }
 
-
+        (_ , _ ) ->
+          model
 
 
 main : Program () Model Msg
