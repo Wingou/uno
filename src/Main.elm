@@ -34,9 +34,7 @@ type alias Player =
 
 
 type alias Game =
-    { currentPlayer : Player
-    , currentCardPlayed : Card
-    , players : List Player
+    { players : List Player
     , drawStack : List Card
     , discardStack : List Card
     }
@@ -451,8 +449,6 @@ update msg model =
         (RequestedStartGame, _ ) ->
             Playing
                 {
-                      currentPlayer = firstPlayer playersInit,
-                      currentCardPlayed = noCard,
                       players = playersInit,
                       drawStack = omitCard (firstCard drawStackInit) drawStackInit,
                       discardStack = firstCard drawStackInit::[]
@@ -460,8 +456,6 @@ update msg model =
 
         (CardPlayed cardPlayed, Playing game ) ->
             Playing {game |  
-                  currentPlayer = firstPlayer <| permutePlayer game.players,
-                  currentCardPlayed = cardPlayed,
                   players = permutePlayer <| omitPlayedCard cardPlayed game.players,
                   discardStack = cardPlayed::game.discardStack
              }
