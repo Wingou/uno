@@ -223,14 +223,14 @@ playingView game =
         , hr [] [ displayPlayers game.players (firstCard game.discardStack)]
         , 
         if (length game.drawStack==0) then
-        h3 [] [ text " The DECK is empty :(  ", 
+        h3 [] [ text " The deck is empty :(  ", 
+              br[][],
               br[][], 
-              if (length game.discardStack==1) then
-               text "Cards insufficient to refill the DECK !"
-              else
-              button[ onClick RefillDrawStack ][ text "Refill the DECK !" ] ,
-
-              br[][], button[ onClick GameEnded ][ text "Press here to end the game !" ] 
+                if (length game.discardStack==1) then
+                text "Not enough card to refill the deck !"
+                else
+                button[ onClick RefillDrawStack ][ text "Refill the deck !" ],
+              br[][], button[ onClick GameEnded ][ text "Press here to end the game." ] 
               ]
         else
         h3 [] [ button[ onClick DrawCard ][ text "   >> DRAW A CARD <<   ", br[][], text (fromInt (length game.drawStack) ++ " cards left" ) ]
@@ -268,13 +268,12 @@ firstPlayer listPlayer =
 
 displayInfoHand : List Card -> Card -> Html Msg
 displayInfoHand hand masterCard =
-    
       if (masterCard==noCard) then
         text ((fromInt <| nbPointInHand hand)++" points" )
       else
         if nbCardInHand hand==0 then
         span [ onClick GameEnded  ][ 
-                  h3 [][ text "Click here !" ]
+                  button [][ text "Click here !" ]
             ] 
         else
         text ((fromInt <| nbCardInHand hand) ++" cards" )
@@ -376,7 +375,7 @@ displayWinner players =
             if winner.pts ==0 then
               text (winner.name)
             else
-              text (winner.name ++ " avec " ++ fromInt winner.pts ++ " points")
+              text (winner.name ++ " with " ++ fromInt winner.pts ++ " points")
             
         Nothing ->
             text "Personne"
@@ -388,7 +387,7 @@ gameOver players =
         [ 
           h1 [] [ text "GAME OVER" ], 
           hr [][],
-          h2 [] [ text "Le gagnant est "],
+          h2 [] [ text "The winner is "],
           h2 [] [displayWinner players ],
           hr [][],
           displayPlayers players noCard
