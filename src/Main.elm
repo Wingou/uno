@@ -1,4 +1,4 @@
-module Main exposing (Card, Color(..), Game, Model(..), Msg(..), Player, Stack(..), cardColor, convertColorToString, discardStackInit, displayCard, displayCards, displayHandCards, displayInfoHand, displayPlayer, displayPlayers, displayWinner, drawCardToPlayer, drawStackInit, firstCard, firstPlayer, gameOver, initialModel, main, nbCardInHand, nbPointInHand, noCard, noPlayer, notStartedView, omitCard, omitPlayedCard, permutePlayer, playersInit, playingView, tailCard, update, view)
+module Main exposing (..)
 
 import Browser
 import Debug exposing (log)
