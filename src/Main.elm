@@ -1,17 +1,19 @@
-module Main exposing (..)
+module Main exposing (Card, CardState(..), Color(..), Game, Model(..), Msg(..), Player, Stack(..), cHeight, cMargin, cOffsetX, cOffsetY, cPlayableUp, cSpriteSize, cStepX, cStepY, cWidth, cardColor, cardPosX, cardPosY, cardSprite, colorY, convertColorToString, discardStackInit, displatBtnEndGame, displayBtnDraw, displayBtnFillDraw, displayBtnPass, displayCard, displayCards, displayHandCards, displayInfoHand, displayPlayer, displayPlayers, displayWinner, drawCardToPlayer, drawStackInit, firstCard, firstPlayer, gameOver, hasWinner, initialModel, isHandPlayable, main, nbCardInHand, nbPointInHand, noCard, noPlayer, notStartedView, omitCard, omitPlayedCard, permutePlayer, playersInit, playingView, tailCard, toPx, update, view)
 
 import Browser
 import Debug exposing (log)
 import Html exposing (Html, a, b, br, button, div, h1, h2, h3, h4, h5, hr, span, text)
 import Html.Attributes exposing (href, style)
 import Html.Events exposing (onClick)
-import List exposing (filter, head, length, map, reverse, sortBy, sum, tail, isEmpty)
+import List exposing (filter, head, isEmpty, length, map, reverse, sortBy, sum, tail)
 import String exposing (fromInt)
+
 
 type CardState
     = Playabled
     | NotPlayabled
     | Seen
+
 
 type Stack
     = Hand
@@ -165,46 +167,109 @@ drawStackInit =
       }
     ]
 
-offsetValue : Int
-offsetValue = 200
 
-offsetColor : Int
-offsetColor = 285
+toPx : Int -> String
+toPx v =
+    fromInt v ++ "px"
 
-cardSprite : Int -> Color -> CardState -> Html msg
-cardSprite value color cardState = 
+
+cPlayableUp : Int
+cPlayableUp =
+    13
+
+
+cStepX : Int
+cStepX =
+    92
+
+
+cStepY : Int
+cStepY =
+    132
+
+
+cWidth : Int
+cWidth =
+    82
+
+
+cHeight : Int
+cHeight =
+    118
+
+
+cSpriteSize : Int
+cSpriteSize =
+    1216
+
+
+cMargin : Int
+cMargin =
+    -20
+
+
+cOffsetX : Int
+cOffsetX =
+    -15
+
+
+cOffsetY : Int
+cOffsetY =
+    -1
+
+
+cardSprite : String
+cardSprite =
+    "https://ena.uno/img/ena-sprite.png"
+
+
+cardPosX : Card -> Int
+cardPosX c =
+    cOffsetX - c.value * cStepX
+
+
+cardPosY : Card -> CardState -> Int
+cardPosY c cState =
+    if cState == Playabled then
+        cOffsetY - colorY c.color * cStepY - cPlayableUp
+
+    else
+        cOffsetY - colorY c.color * cStepY
+
+
+displayCard : Card -> CardState -> Html Msg
+displayCard c cardState =
     div
-        [ style "background-image" "url(https://ena.uno/img/ena-sprite.png)"
-        , style "width" (fromInt(offsetValue-29)++"px")
-        , style "height" (fromInt(offsetColor) ++ "px")
-        , style "background-position-x" (fromInt(-30-offsetValue*value) ++ "px")
-        ,     if cardState==Playabled then
-              style "background-position-y" (fromInt(-30-offsetColor*colorY(color)) ++ "px")
-              else
-              style "background-position-y" (fromInt(-30-offsetColor*colorY(color)+20) ++ "px")
+        [ style "background-image" ("url(" ++ cardSprite ++ ")")
+        , style "width" (toPx cWidth)
+        , style "height" (toPx (cHeight + cPlayableUp))
+        , style "background-position-x" (toPx (cardPosX c))
+        , style "background-position-y" (toPx (cardPosY c cardState))
         , style "float" "left"
-        , style "margin-left" "-50px"
+        , style "background-size" (toPx cSpriteSize)
+        , style "margin-left" (toPx cMargin)
         ]
-        [
-            if cardState==Playabled then
-            text "PLAY ME"
-            else
-            text ""
-        ]
-        
-colorY: Color -> Int
+        []
+
+
+colorY : Color -> Int
 colorY color =
     case color of
         Red ->
             0
-        Blue -> 
+
+        Blue ->
             1
+
         Yellow ->
             2
+
         Green ->
             3
+
         _ ->
             -1
+
 
 cardColor : Color -> String
 cardColor c =
@@ -267,115 +332,135 @@ notStartedView =
     div []
         [ br [] []
         , h1 [] [ text "UNO" ]
-        , button [ onClick RequestedStartGame ] [ 
-          h3 [][
-              text "  LET'S START...  " ]
+        , button [ onClick RequestedStartGame ]
+            [ h3 []
+                [ text "  LET'S START...  "
+                ]
+            ]
         ]
-        ]
+
 
 isHandPlayable : Player -> Card -> Bool
 isHandPlayable player masterCard =
-  case filter (\h -> h.value == masterCard.value || h.color == masterCard.color) player.hand of 
-      [] -> False
-      _ -> True
+    case filter (\h -> h.value == masterCard.value || h.color == masterCard.color) player.hand of
+        [] ->
+            False
+
+        _ ->
+            True
+
 
 displayBtnDraw : Html Msg
-displayBtnDraw = 
-      button [ onClick DrawCard ] [ text " DRAW A CARD "]
+displayBtnDraw =
+    button [ onClick DrawCard, style "width" "200px" ] [ text "Draw a card" ]
+
 
 displayBtnPass : Html Msg
-displayBtnPass  = 
-      button [ onClick Pass ] [ text " PASS " ]
+displayBtnPass =
+    button [ onClick Pass, style "width" "200px" ] [ text "Pass" ]
+
 
 displayBtnFillDraw : Html Msg
-displayBtnFillDraw  = 
-      button [ onClick RefillDrawStack ] [ text "Refill the deck" ]
+displayBtnFillDraw =
+    button [ onClick RefillDrawStack, style "width" "200px" ] [ text "Fill the deck" ]
+
 
 displatBtnEndGame : Html Msg
-displatBtnEndGame = 
-      button [ onClick GameEnded ] [ text "End the game" ]
+displatBtnEndGame =
+    button [ onClick GameEnded, style "width" "200px" ] [ text "End the game" ]
 
 
 playingView : Game -> Html Msg
 playingView game =
-    div [style "background-color" "AZURE"]
-        [ 
-          div[][
-                h3 [style "background-color" "LIGHTBLUE", style "padding" "10px"][text (firstPlayer game.players).name ]
+    div [ style "background-color" "AZURE" ]
+        [ div []
+            [ div
+                [ style "padding" "2px"
+                , style "background-color" "LIGHTBLUE"
+                ]
+                [ b [ style "font-size" "20px" ] [ text (firstPlayer game.players).name ]
+                ]
 
-                -- pour PLAY                
-                -- il faut Jouable
-                , if isHandPlayable (firstPlayer game.players) (firstCard game.discardStack) then
-                    div [][ text "Play a card"]
+            -- pour PLAY
+            -- il faut Jouable
+            , if isHandPlayable (firstPlayer game.players) (firstCard game.discardStack) then
+                b [] [ text "Play a card" ]
+
+              else
+                b [] [ text "You can't play any card" ]
+
+            -- pour PASS
+            -- il faut Piocher
+            , if game.drawing then
+                div [] [ displayBtnPass ]
+
+              else
+                div [] [ text "" ]
+
+            -- pour PIOCHER
+            -- il faut Pas Déjà Piocher
+            -- il faut Draw plein
+            , if not game.drawing && length game.drawStack > 0 then
+                div [] [ displayBtnDraw ]
+
+              else
+                div [] [ text "" ]
+
+            -- pour FILL
+            -- il faut Deck>=2 cartes
+            -- il faut Draw vide
+            -- il faut Pas déjà Piocher
+            , if length game.drawStack == 0 && length game.discardStack > 1 && not game.drawing then
+                div [] [ displayBtnFillDraw ]
+
+              else
+                div [] [ text "" ]
+
+            -- pour End Game
+            -- il faut Pas Jouable
+            -- il faut Draw vide
+            -- il faut Deck <=1 carte
+            -- il faut Pas déjà Piocher
+            , if
+                not (isHandPlayable (firstPlayer game.players) (firstCard game.discardStack))
+                    && length game.drawStack
+                    == 0
+                    && length game.discardStack
+                    <= 1
+                    && not game.drawing
+              then
+                div [] [ displatBtnEndGame ]
+
+              else
+                div [] [ text "" ]
+            , div [ style "background-color" "LIGHTYELLOW" ]
+                [ if length game.drawStack == 0 then
+                    h4 []
+                        [ text "The deck is empty"
+                        , if length game.discardStack <= 1 && not game.drawing then
+                            div []
+                                [ text "and there's not any card left."
+                                ]
+
+                          else
+                            text ""
+                        ]
+
                   else
-                    div [][ text "You can't play any card"]
-
-                -- pour PASS
-                -- il faut Piocher
-                , if game.drawing then
-                    div [][ displayBtnPass ]
-                  else
-                    div [][ text ""]
-
-                -- pour PIOCHER
-                -- il faut Pas Déjà Piocher
-                -- il faut Draw plein
-                , if not game.drawing && length game.drawStack>0 then
-                    div [][ displayBtnDraw ]
-                  else
-                    div [][ text ""]
-
-                -- pour FILL
-                -- il faut Deck>=2 cartes
-                -- il faut Draw vide
-                -- il faut Pas déjà Piocher
-                , if length game.drawStack==0 && length game.discardStack > 1 && not game.drawing then
-                    div [][ displayBtnFillDraw ]
-                  else
-                    div [][ text ""]
-                
-                -- pour End Game
-                -- il faut Pas Jouable
-                -- il faut Draw vide
-                -- il faut Deck <=1 carte
-                -- il faut Pas déjà Piocher
-                , if not (isHandPlayable (firstPlayer game.players) (firstCard game.discardStack))
-                     && length game.drawStack==0 
-                     && length game.discardStack<=1
-                     && not game.drawing
-                  then
-                    div [][ displatBtnEndGame ]
-                  else
-                    div [][ text ""]
-          ,
-
-            if length game.drawStack == 0 then
-              h3 [] [ text "The deck is empty",
-                      if length game.discardStack <= 1 && not game.drawing then
-                        text " and there's not any card left."
-                      else
-                        text ""
-                    ]
-            else
-              h3 [] [ text (fromInt (length game.drawStack)), text " cards left in the deck "]
-          ],
-
-          displayPlayers game.players (firstCard game.discardStack) game.drawing,
-
-          div [style "background-color" "LIGHTYELLOW"]
-          [
-              h3 [style "background-color" "YELLOW", style "padding" "10px"][text "GAME BOARD" ]
-              , div [ style "overflow" "hidden", style "padding-left" "70px"][displayCard (firstCard game.discardStack) Seen]
-              , div [ style "clear" "left" ] [displayCards ( omitCard (firstCard game.discardStack) game.discardStack) NotPlayabled]
-          ], 
-
-          hr[][]
-          , 
-
-          div [][
-              displatBtnEndGame,
-              h4[][ text "UNO - Workshop ELM - October 2019"]
-          ]
+                    h4 [] [ text (fromInt (length game.drawStack)), text " cards left in the deck " ]
+                ]
+            ]
+        , displayPlayers game.players (firstCard game.discardStack) game.drawing
+        , div [ style "background-color" "LIGHTYELLOW" ]
+            [ h3 [ style "background-color" "YELLOW", style "padding" "10px" ] [ text "GAME BOARD" ]
+            , div [ style "overflow" "hidden", style "padding-left" "70px" ] [ displayCard (firstCard game.discardStack) Seen ]
+            , div [ style "clear" "left" ] [ displayCards (omitCard (firstCard game.discardStack) game.discardStack) NotPlayabled ]
+            ]
+        , hr [] []
+        , div []
+            [ displatBtnEndGame
+            , h4 [] [ text "UNO - Workshop ELM - October 2019" ]
+            ]
         ]
 
 
@@ -408,42 +493,44 @@ displayInfoHand : List Card -> Card -> Html Msg
 displayInfoHand hand masterCard =
     if masterCard == noCard then
         text ((fromInt <| nbPointInHand hand) ++ " points")
+
     else
-        text ((fromInt <| nbCardInHand hand) ++ " cards - "++(fromInt <| nbPointInHand hand) ++ " points")
+        text ((fromInt <| nbCardInHand hand) ++ " cards - " ++ (fromInt <| nbPointInHand hand) ++ " points")
 
 
 displayPlayers : List Player -> Card -> Bool -> Html Msg
 displayPlayers players masterCard drawing =
-    div [] (map (\p -> displayPlayer p masterCard (firstPlayer players) drawing ) (sortBy .id players))
+    div [] (map (\p -> displayPlayer p masterCard (firstPlayer players) drawing) (sortBy .id players))
 
 
 displayPlayer : Player -> Card -> Player -> Bool -> Html Msg
 displayPlayer player masterCard currentPlayer drawing =
-          div []
-          [
-            hr[][],
-              div [
-                  style "padding" "10px"
-                , style "background-color" "LIGHTGREEN"
-              ][
-                    b [style "font-size" "20px"] [text player.name]
-                  , span [][ text " - " ]
-                  , span [] [displayInfoHand player.hand masterCard ]
-              ]
-            , 
-            div [
-                if currentPlayer == player then
-                    style "background-color" "GREEN"
-                else
-                    style "background-color" "WHITE"
-            ][
-              if currentPlayer == player then
+    div []
+        [ hr [] []
+        , div
+            [ style "padding" "2px"
+            , style "background-color" "LIGHTGREEN"
+            ]
+            [ b [ style "font-size" "20px" ] [ text player.name ]
+            , span [] [ text " - " ]
+            , span [] [ displayInfoHand player.hand masterCard ]
+            ]
+        , div
+            [ if currentPlayer == player then
+                style "background-color" "GREEN"
+
+              else
+                style "background-color" "WHITE"
+            ]
+            [ br [] []
+            , if currentPlayer == player then
                 displayHandCards player.hand masterCard drawing
+
               else
                 displayCards player.hand NotPlayabled
-              ]
-          ]
-
+            , br [] []
+            ]
+        ]
 
 
 nbCardInHand : List Card -> Int
@@ -465,14 +552,16 @@ firstCard listCard =
         Nothing ->
             noCard
 
+
 displayHandCards : List Card -> Card -> Bool -> Html Msg
 displayHandCards cards masterCard drawing =
-    div [ style "overflow" "hidden", style "padding-left" "70px"] 
+    div [ style "overflow" "hidden", style "padding-left" "70px" ]
         (map
             (\c ->
                 if c.value == masterCard.value || c.color == masterCard.color then
                     a [ onClick (CardPlayed c) ]
-                        [ displayCard c Playabled]
+                        [ displayCard c Playabled ]
+
                 else
                     displayCard c NotPlayabled
             )
@@ -481,14 +570,9 @@ displayHandCards cards masterCard drawing =
 
 
 displayCards : List Card -> CardState -> Html Msg
-displayCards cards cardState  =
-    div [ style "overflow" "hidden", style "padding-left" "70px"] (map (\c -> displayCard c cardState) cards)
+displayCards cards cardState =
+    div [ style "overflow" "hidden", style "padding-left" "70px" ] (map (\c -> displayCard c cardState) cards)
 
-
-
-displayCard : Card -> CardState -> Html Msg
-displayCard c cardState =
-         cardSprite c.value c.color cardState
 
 convertColorToString : Color -> String
 convertColorToString color =
@@ -554,7 +638,7 @@ omitCard : Card -> List Card -> List Card
 omitCard cardToOmit listCards =
     filter (\c -> c /= cardToOmit) listCards
 
-   
+
 omitPlayedCard : Card -> List Player -> List Player
 omitPlayedCard cardToOmit allPlayers =
     map (\p -> { p | hand = omitCard cardToOmit p.hand }) allPlayers
@@ -568,6 +652,7 @@ drawCardToPlayer players cards =
                 | hand =
                     if (firstPlayer players).id == p.id then
                         reverse (firstCard cards :: reverse p.hand)
+
                     else
                         p.hand
             }
@@ -584,14 +669,14 @@ tailCard cards =
         Nothing ->
             []
 
+
 hasWinner : List Player -> Card -> Bool
 hasWinner players lastCardPlayed =
-  players
-  |> filter (\p -> isEmpty (omitCard lastCardPlayed p.hand) )
-  |> isEmpty
-  |> not
+    players
+        |> filter (\p -> isEmpty (omitCard lastCardPlayed p.hand))
+        |> isEmpty
+        |> not
 
-  
 
 view : Model -> Html Msg
 view model =
@@ -618,16 +703,16 @@ update msg model =
                 }
 
         ( CardPlayed cardPlayed, Playing game ) ->
-            if hasWinner game.players cardPlayed
-            then
-                  GameOver (omitPlayedCard cardPlayed game.players)
+            if hasWinner game.players cardPlayed then
+                GameOver (omitPlayedCard cardPlayed game.players)
+
             else
-                    Playing
-                        { game
-                            | players = permutePlayer <| omitPlayedCard cardPlayed game.players
-                            , discardStack = cardPlayed :: game.discardStack
-                            , drawing=False
-                        }
+                Playing
+                    { game
+                        | players = permutePlayer <| omitPlayedCard cardPlayed game.players
+                        , discardStack = cardPlayed :: game.discardStack
+                        , drawing = False
+                    }
 
         ( DrawCard, Playing game ) ->
             Playing
@@ -643,12 +728,13 @@ update msg model =
                     | drawStack = tailCard game.discardStack
                     , discardStack = firstCard game.discardStack :: []
                 }
-  
+
         ( Pass, Playing game ) ->
-             Playing
-                 { game | players = permutePlayer game.players
-                 , drawing = False
-                 } 
+            Playing
+                { game
+                    | players = permutePlayer game.players
+                    , drawing = False
+                }
 
         ( DoNothing, _ ) ->
             model
