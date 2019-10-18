@@ -31,3 +31,7 @@ Ensuite, supprimer le dossier \MonApp
 $> cd finance
 
 $> elm-app start
+
+Pour importer les lib :
+par exemple :
+$> elm-app install elm/random 

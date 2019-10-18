@@ -7,7 +7,8 @@ import Html.Attributes exposing (href, style)
 import Html.Events exposing (onClick)
 import List exposing (filter, head, isEmpty, length, map, reverse, sortBy, sum, tail)
 import String exposing (fromInt)
-
+import Basics exposing (round)
+import Random
 
 type CardState
     = Playabled
@@ -66,9 +67,9 @@ type Msg
     | Pass
 
 
-initialModel : Model
-initialModel =
-    NotStarted
+initialModel : () -> (Model, Cmd Msg)
+initialModel _ =
+    (NotStarted, Cmd.none)
 
 
 discardStackInit : List Card
@@ -172,50 +173,51 @@ toPx : Int -> String
 toPx v =
     fromInt v ++ "px"
 
+cZoom : Float
+cZoom = 0.8
 
 cPlayableUp : Int
 cPlayableUp =
-    13
+    round(13*cZoom)
 
 
 cStepX : Int
 cStepX =
-    92
+    round (92*cZoom)
 
 
 cStepY : Int
 cStepY =
-    132
+    round  (132*cZoom)
 
 
 cWidth : Int
 cWidth =
-    82
+    round (82*cZoom)
 
 
 cHeight : Int
 cHeight =
-    118
+    round (118*cZoom)
 
 
 cSpriteSize : Int
 cSpriteSize =
-    1216
+    round (1216*cZoom)
 
+cOffsetX : Int
+cOffsetX =
+    round (-15*cZoom)
+
+
+cOffsetY : Int
+cOffsetY =
+ round    (-1*cZoom)
 
 cMargin : Int
 cMargin =
     -20
 
-
-cOffsetX : Int
-cOffsetX =
-    -15
-
-
-cOffsetY : Int
-cOffsetY =
-    -1
 
 
 cardSprite : String
@@ -691,65 +693,86 @@ view model =
             gameOver players
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case ( msg, model ) of
         ( RequestedStartGame, _ ) ->
-            Playing
+            (Playing
                 { players = playersInit
                 , drawStack = omitCard (firstCard drawStackInit) drawStackInit
                 , discardStack = firstCard drawStackInit :: []
                 , drawing = False
                 }
+            , Cmd.none    
+            )
 
         ( CardPlayed cardPlayed, Playing game ) ->
             if hasWinner game.players cardPlayed then
-                GameOver (omitPlayedCard cardPlayed game.players)
+                (GameOver (omitPlayedCard cardPlayed game.players)
+                 , Cmd.none    
+                )
 
             else
-                Playing
+                (Playing
                     { game
                         | players = permutePlayer <| omitPlayedCard cardPlayed game.players
                         , discardStack = cardPlayed :: game.discardStack
                         , drawing = False
                     }
-
+                 , Cmd.none    
+                 )
+        
         ( DrawCard, Playing game ) ->
-            Playing
+            (Playing
                 { game
                     | players = drawCardToPlayer game.players game.drawStack
                     , drawStack = omitCard (firstCard game.drawStack) game.drawStack
                     , drawing = True
                 }
+             , Cmd.none    
+            )
 
         ( RefillDrawStack, Playing game ) ->
-            Playing
+            (Playing
                 { game
                     | drawStack = tailCard game.discardStack
                     , discardStack = firstCard game.discardStack :: []
                 }
+            , Cmd.none    
+            )
 
         ( Pass, Playing game ) ->
-            Playing
+            (Playing
                 { game
                     | players = permutePlayer game.players
                     , drawing = False
                 }
+             , Cmd.none    
+            )
 
         ( DoNothing, _ ) ->
-            model
+            (model, Cmd.none)
 
         ( GameEnded, Playing game ) ->
-            GameOver game.players
+            (GameOver game.players, Cmd.none)
 
         ( _, _ ) ->
-            model
+            (model, Cmd.none)
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  Sub.none
 
 
 main : Program () Model Msg
 main =
-    Browser.sandbox
+    Browser.element
         { init = initialModel
         , view = view
         , update = update
+        , subscriptions = subscriptions
         }

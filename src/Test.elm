@@ -5,7 +5,7 @@ import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import List exposing(map)
 import String exposing (fromInt)
---import Random.List exposing(shuffle)
+import Random  
 
 
 type alias Model =
@@ -178,13 +178,17 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
-         (map
-             (\d -> div[][ text ("<"++fromInt(d.value)++" "++convertColorToString(d.color)++"> ") ] )
-            drawStackInit
-         )
-    
-
+      div [][
+          div []
+              (map
+                  (\d -> div[][ text ("<"++fromInt(d.value)++" "++convertColorToString(d.color)++"> ") ] )
+                  drawStackInit
+              )
+          ,
+          div [][
+              text (Random.int 1 6)
+         ]
+      ]
 
 
 main : Program () Model Msg
