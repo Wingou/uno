@@ -1,11 +1,11 @@
-module Main exposing (Card, CardState(..), Color(..), Game, Model(..), Msg(..), Player, Stack(..), cHeight, cMargin, cOffsetX, cOffsetY, cPlayableUp, cSpriteSize, cStepX, cStepY, cWidth, cardColor, cardPosX, cardPosY, cardSprite, colorY, convertColorToString, discardStackInit, displatBtnEndGame, displayBtnDraw, displayBtnFillDraw, displayBtnPass, displayCard, displayCards, displayHandCards, displayInfoHand, displayPlayer, displayPlayers, displayWinner, drawCardToPlayer, drawStackInit, firstCard, firstPlayer, gameOver, hasWinner, initialModel, isHandPlayable, main, nbCardInHand, nbPointInHand, noCard, noPlayer, notStartedView, omitCard, omitPlayedCard, permutePlayer, playersInit, playingView, tailCard, toPx, update, view)
+module Main exposing (Card, CardState(..), Color(..), Game, Model(..), Msg(..), Player, Stack(..), cHeight, cMargin, cOffsetX, cOffsetY, cPlayableUp, cSpriteSize, cStepX, cStepY, cWidth, cardPosX, cardPosY, cardSprite, colorY, convertColorToString, discardStackInit, displatBtnEndGame, displayBtnDraw, displayBtnFillDraw, displayBtnPass, displayCard, displayCards, displayHandCards, displayInfoHand, displayPlayer, displayPlayers, displayWinner, drawCardToPlayer, drawStackInit, firstCard, firstPlayer, gameOver, hasWinner, initialModel, isHandPlayable, main, nbCardInHand, nbPointInHand, noCard, noPlayer, notStartedView, omitCard, omitPlayedCard, permutePlayer, playersInit, playingView, tailCard, toPx, update, view)
 
 import Browser
 import Debug exposing (log)
 import Html exposing (Html, a, b, br, button, div, h1, h2, h3, h4, h5, hr, span, text)
 import Html.Attributes exposing (href, style)
 import Html.Events exposing (onClick)
-import List exposing (filter, head, isEmpty, length, map, reverse, sortBy, sum, tail, repeat, range, map2, take, drop)
+import List exposing (filter, head, isEmpty, length, map, reverse, sortBy, sum, tail, repeat, range, map2, take, drop, concat )
 import String exposing (fromInt)
 import Basics exposing (round)
 import Random
@@ -27,7 +27,8 @@ type Color
     | Green
     | Blue
     | Yellow
-    | White
+    | Joker
+    | Back
 
 
 type alias Card =
@@ -75,17 +76,34 @@ type Msg
     | DemandeNewListCards
     | DistributeDrawStack (List Int)
 
+buildRegular : List Card
+buildRegular =
+    concat ( map (\_->
+        concat (
+            map (\c->
+                map (\v -> { id=0, value=v, color=convertIntToColor(c)} ) (range 1 12)
+            ) (range 1 4)
+        )
+    ) (range 1 2)
+    )
 
-builCardValueByColor : Color -> List Card
-builCardValueByColor c =
-    map (\v -> { id=0, value=v, color=c} ) (range 1 9)
+buildZero : List Card
+buildZero =
+        map (\c -> { id=0, value=0, color=convertIntToColor(c)} ) (range 1 4)
+
+buildJoker : List Card
+buildJoker = 
+    concat (
+        map (\_ -> 
+            map (\v -> { id=0, value=v, color=Joker}) (range 1 2)
+        ) (range 1 4)
+    )
 
 drawStackInit : List Card
 drawStackInit = 
-    builCardValueByColor Red ++
-    builCardValueByColor Blue ++
-    builCardValueByColor Yellow ++
-    builCardValueByColor Green
+    buildZero ++ 
+    buildRegular ++
+    buildJoker
     
 
 initialModel : () -> (Model, Cmd Msg)
@@ -94,101 +112,7 @@ initialModel _ =
 
 
 discardStackInit : List Card
-discardStackInit =
-    []
-
-
--- drawStackInit : List Card
--- drawStackInit =
---     [ { id = 0, value = 9
---       , color = Green
---       }
---     , { id = 0, value = 4
---       , color = Yellow
---       }
---     , { id = 0, value = 3
---       , color = Blue
---       }
---     , { id = 0, value = 3
---       , color = Green
---       }
---     , { id = 0, value = 6
---       , color = Yellow
---       }
---     , { id = 0, value = 9
---       , color = Blue
---       }
---     , { id = 0, value = 2
---       , color = Green
---       }
---     , { id = 0, value = 1
---       , color = Yellow
---       }
---     , { id = 0, value = 7
---       , color = Blue
---       }
---     , { id = 0, value = 7
---       , color = Red
---       }
---     , { id = 0, value = 5
---       , color = Red
---       }
---     , { id = 0, value = 7
---       , color = Green
---       }
---     , { id = 0, value = 6
---       , color = Yellow
---       }
---     , { id = 0, value = 9
---       , color = Yellow
---       }
---     , { id = 0, value = 8
---       , color = Green
---       }
---     , { id = 0, value = 4
---       , color = Blue
---       }
---     , { id = 0, value = 5
---       , color = Green
---       }
---     , { id = 0, value = 3
---       , color = Red
---       }
---     , { id = 0, value = 4
---       , color = Red
---       }
---     , { id = 0, value = 6
---       , color = Green
---       }
---     , { id = 0, value = 1
---       , color = Blue
---       }
---     , { id = 0, value = 2
---       , color = Red
---       }
---     , { id = 0, value = 5
---       , color = Yellow
---       }
---     , { id = 0, value = 6
---       , color = Red
---       }
---     , { id = 0, value = 8
---       , color = Yellow
---       }
---     , { id = 0, value = 8
---       , color = Green
---       }
---     , { id = 0, value = 4
---       , color = Green
---       }
---     , { id = 0, value = 2
---       , color = Blue
---       }
---     , { id = 0, value = 1
---       , color = Green
---       }
---     ]
-
+discardStackInit = []
 
 toPx : Int -> String
 toPx v =
@@ -289,63 +213,26 @@ colorY color =
         Green ->
             3
 
-        _ ->
-            -1
-
-
-cardColor : Color -> String
-cardColor c =
-    case c of
-        Yellow ->
-            "Brown"
-
-        _ ->
-            convertColorToString c
+        Joker ->
+            4           
+        
+        Back ->
+            4
 
 
 playersInit : List Player
 playersInit =
     [ { id = 1
       , name = "Wing"
-      , hand =
-            [ { id = 0, value = 1
-              , color = Red
-              }
-            , { id = 0, value = 2
-              , color = Yellow
-              }
-            , { id = 0, value = 3
-              , color = Yellow
-              }
-            ]
+      , hand =[]            
       }
     , { id = 2
       , name = "Theo"
-      , hand =
-            [ { id = 0, value = 5
-              , color = Blue
-              }
-            , { id = 0, value = 6
-              , color = Blue
-              }
-            , { id = 0, value = 8
-              , color = Red
-              }
-            ]
+      , hand =[]            
       }
     , { id = 3
       , name = "Alex"
-      , hand =
-            [ { id = 0, value = 9
-              , color = Red
-              }
-            , { id = 0, value = 7
-              , color = Yellow
-              }
-            , { id = 0, value = 8
-              , color = Blue
-              }
-            ]
+      , hand =[]            
       }
     ]
 
@@ -369,7 +256,8 @@ convertIntToColor n =
         2 -> Blue
         3 -> Yellow
         4 -> Green
-        _ -> White
+        5 -> Joker
+        _ -> Back
 
 
 isHandPlayable : Player -> Card -> Bool
@@ -507,8 +395,8 @@ noPlayer =
 noCard : Card
 noCard =
     { id = 0
-    , value = 0
-    , color = White
+    , value = -1
+    , color = Back
     }
 
 
@@ -622,8 +510,11 @@ convertColorToString color =
         Yellow ->
             "Yellow"
 
-        White ->
-            "White"
+        Joker ->
+            "Joker"
+
+        Back ->
+            "Back"
 
 
 displayWinner : List Player -> Html Msg
@@ -710,15 +601,17 @@ hasWinner players lastCardPlayed =
         |> isEmpty
         |> not
 
+nbJokers : Int
+nbJokers = 8
 
 nbColors : Int
 nbColors = 4
 
 nbCardsByColor : Int
-nbCardsByColor = 9
+nbCardsByColor = 26 -- (0 à 9 + double + Sens + Pass)*2
 
 nbCards : Int
-nbCards = nbColors * nbCardsByColor
+nbCards = nbColors * nbCardsByColor + nbJokers
 
 nbPlayers : Int
 nbPlayers = 3
@@ -768,7 +661,8 @@ update msg model =
         (DistributeDrawStack generatedNewIds, Playing game )  ->
             (Playing
                 {
-                  originStack = initShuffleCards drawStackInit generatedNewIds
+                  --originStack = initShuffleCards drawStackInit generatedNewIds
+                  originStack = drawStackInit
                 , players = initHandOfPlayers ( drop 1 (initShuffleCards drawStackInit generatedNewIds)) game.players
                 , drawStack = drop (nbCardsByPlayer * nbPlayers + 1) (initShuffleCards drawStackInit generatedNewIds)
                 , discardStack = firstCard (initShuffleCards drawStackInit generatedNewIds) :: []
