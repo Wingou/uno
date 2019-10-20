@@ -3,7 +3,7 @@ module Main exposing (Card, CardState(..), Color(..), Game, Model(..), Msg(..), 
 import Browser
 import Debug exposing (log)
 import Html exposing (Html, a, b, br, button, div, h1, h2, h3, h4, h5, hr, span, text)
-import Html.Attributes exposing (href, style)
+import Html.Attributes exposing (href, style, title)
 import Html.Events exposing (onClick)
 import List exposing (filter, head, isEmpty, length, map, reverse, sortBy, sum, tail, repeat, range, map2, take, drop, concat, append )
 import String exposing (fromInt)
@@ -197,6 +197,19 @@ displayCard c cardState =
         ]
         []
 
+displayCardAction : Card -> String -> Html Msg
+displayCardAction c cartText  =
+    div
+        [ style "background-image" ("url(" ++ cardSprite ++ ")")
+        , style "width" (toPx cWidth)
+        , style "height" (toPx (cHeight + cPlayableUp))
+        , style "background-position-x" (toPx (cardPosX c))
+        , style "background-position-y" (toPx (cardPosY c Seen))
+        , style "background-size" (toPx cSpriteSize)
+        , style "float" "left"
+        ]
+        [  div[ 
+            style "margin-top" "10px" , style "color" "RED" ][text cartText]]
 
 colorY : Color -> Int
 colorY color =
@@ -296,7 +309,18 @@ displayBtnEndGame =
 playingView : Game -> Html Msg
 playingView game =
     div [ style "background-color" "AZURE" ]
-        [ div []
+        [ 
+            ------ header
+            div [style "float" "left"
+                ,style "margin-left" "50px"]
+                [   displayCardAction (firstCard game.discardStack) "",
+                    a [onClick DrawCard, title "Draw cards here !"]
+                        [displayCardAction (noCard) ""]]
+          , div [style "float" "right"
+                ,style "margin-right" "50px"]
+                [   a [onClick GameEnded, title "End the game !"]
+                        [displayCardAction {noCard | value=2} "Game Over"]]
+          , div []
             [ div
                 [ style "padding" "2px"
                 , style "background-color" "LIGHTBLUE"
@@ -380,12 +404,16 @@ playingView game =
                     h4 [] [ text (fromInt (length game.drawStack)), text " cards left in the deck " ]
                 ]
             ]
+
+            --------------------- Header
+
+            
         , displayPlayers game.players (game.mainCard) game.drawing game.penality
-        , div [ style "background-color" "LIGHTYELLOW" ]
-            [ h3 [ style "background-color" "YELLOW", style "padding" "10px" ] [ text "GAME BOARD" ]
-            , div [ style "overflow" "hidden", style "padding-left" "70px" ] [ displayCard (firstCard game.discardStack) Seen ]
-            , div [ style "clear" "left" ] [ displayCards (omitCard (firstCard game.discardStack) game.discardStack) NotPlayabled ]
-            ]
+        -- , div [ style "background-color" "LIGHTYELLOW" ]
+        --     [ h3 [ style "background-color" "YELLOW", style "padding" "10px" ] [ text "GAME BOARD" ]
+        --     , div [ style "overflow" "hidden", style "padding-left" "70px" ] [ displayCard (firstCard game.discardStack) Seen ]
+        --     , div [ style "clear" "left" ] [ displayCards (omitCard (firstCard game.discardStack) game.discardStack) NotPlayabled ]
+        --     ]
         , hr [] []
         , div []
             [ displayBtnEndGame
@@ -405,7 +433,7 @@ noPlayer =
 noCard : Card
 noCard =
     { id = 0
-    , value = -1
+    , value = 0
     , color = Back
     }
 
