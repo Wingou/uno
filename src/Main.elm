@@ -1,11 +1,11 @@
-module Main exposing (Card, CardState(..), Color(..), Game, Model(..), Msg(..), Player, Stack(..), cHeight, cMargin, cOffsetX, cOffsetY, cPlayableUp, cSpriteSize, cStepX, cStepY, cWidth, cardPosX, cardPosY, cardSprite, colorY, convertColorToString, discardStackInit, displatBtnEndGame, displayBtnDraw, displayBtnFillDraw, displayBtnPass, displayCard, displayCards, displayHandCards, displayInfoHand, displayPlayer, displayPlayers, displayWinner, drawCardToPlayer, drawStackInit, firstCard, headPlayer, gameOver, hasWinner, initialModel, isHandPlayable, main, nbCardInHand, nbPointInHand, noCard, noPlayer, notStartedView, omitCard, omitPlayedCard, permutePlayer, playersInit, playingView, tailCard, toPx, update, view)
+module Main exposing (Card, CardState(..), Color(..), Game, Model(..), Msg(..), Player, Stack(..), cHeight, cMargin, cOffsetX, cOffsetY, cPlayableUp, cSpriteSize, cStepX, cStepY, cWidth, cardPosX, cardPosY, cardSprite, colorY, convertColorToString, discardStackInit, displayBtnEndGame, displayBtnDraw, displayBtnFillDraw, displayBtnPass, displayCard, displayCards, displayHandCards, displayInfoHand, displayPlayer, displayPlayers, displayWinner, drawCardToPlayer, drawStackInit, firstCard, headPlayer, gameOver, hasWinner, initialModel, isHandPlayable, main, nbCardInHand, nbPointInHand, noCard, noPlayer, notStartedView, omitCard, omitPlayedCard, permutePlayer, playersInit, playingView, tailCard, toPx, update, view)
 
 import Browser
 import Debug exposing (log)
 import Html exposing (Html, a, b, br, button, div, h1, h2, h3, h4, h5, hr, span, text)
 import Html.Attributes exposing (href, style)
 import Html.Events exposing (onClick)
-import List exposing (filter, head, isEmpty, length, map, reverse, sortBy, sum, tail, repeat, range, map2, take, drop, concat )
+import List exposing (filter, head, isEmpty, length, map, reverse, sortBy, sum, tail, repeat, range, map2, take, drop, concat, append )
 import String exposing (fromInt)
 import Basics exposing (round)
 import Random
@@ -49,11 +49,12 @@ type PermutationSens = ToRight | ToLeft
 type alias Game =
     { 
       originStack : List Card
+    , mainCard : Card
     , permutationSens : PermutationSens
     , players : List Player
     , drawStack : List Card
     , discardStack : List Card
-    , drawing : Bool
+    , drawing : Int
     }
   
 
@@ -258,19 +259,22 @@ convertIntToColor n =
         _ -> Back
 
 
-isHandPlayable : Player -> Card -> Bool
-isHandPlayable player masterCard =
-    case filter (\h -> h.value == masterCard.value || h.color == masterCard.color) player.hand of
-        [] ->
-            False
+isHandPlayable : Player -> Card -> Int -> Bool
+isHandPlayable player masterCard drawing =
+    if masterCard.value==12 && drawing==0 then
+        False
+    else
+        case filter (\h -> h.value == masterCard.value || h.color == masterCard.color) player.hand of
+            [] ->
+                False
 
-        _ ->
-            True
+            _ ->
+                True
 
 
-displayBtnDraw : Html Msg
-displayBtnDraw =
-    button [ onClick DrawCard, style "width" "200px" ] [ text "Draw a card" ]
+displayBtnDraw : Int -> Html Msg
+displayBtnDraw drawing =
+    button [ onClick DrawCard, style "width" "200px" ] [ text ("Draw " ++ fromInt(drawing)++ " cards") ]
 
 
 displayBtnPass : Html Msg
@@ -283,8 +287,8 @@ displayBtnFillDraw =
     button [ onClick RefillDrawStack, style "width" "200px" ] [ text "Fill the deck" ]
 
 
-displatBtnEndGame : Html Msg
-displatBtnEndGame =
+displayBtnEndGame : Html Msg
+displayBtnEndGame =
     button [ onClick GameEnded, style "width" "200px" ] [ text "End the game" ]
 
 
@@ -301,7 +305,7 @@ playingView game =
 
             -- pour PLAY
             -- il faut Jouable
-            , if isHandPlayable (headPlayer game.players) (firstCard game.discardStack) then
+            , if isHandPlayable (headPlayer game.players) game.mainCard game.drawing then
                 b [] [ text "Play a card" ]
 
               else
@@ -309,7 +313,7 @@ playingView game =
 
             -- pour PASS
             -- il faut Piocher
-            , if game.drawing then
+            , if game.drawing==0 then
                 div [] [ displayBtnPass ]
 
               else
@@ -318,8 +322,8 @@ playingView game =
             -- pour PIOCHER
             -- il faut Pas Déjà Piocher
             -- il faut Draw plein
-            , if not game.drawing && length game.drawStack > 0 then
-                div [] [ displayBtnDraw ]
+            , if game.drawing>0 && length game.drawStack > 0 then
+                div [] [ displayBtnDraw game.drawing]
 
               else
                 div [] [ text "" ]
@@ -328,7 +332,7 @@ playingView game =
             -- il faut Deck>=2 cartes
             -- il faut Draw vide
             -- il faut Pas déjà Piocher
-            , if length game.drawStack == 0 && length game.discardStack > 1 && not game.drawing then
+            , if length game.drawStack == 0 && length game.discardStack > 1 && game.drawing>0 then
                 div [] [ displayBtnFillDraw ]
 
               else
@@ -340,14 +344,12 @@ playingView game =
             -- il faut Deck <=1 carte
             -- il faut Pas déjà Piocher
             , if
-                not (isHandPlayable (headPlayer game.players) (firstCard game.discardStack))
-                    && length game.drawStack
-                    == 0
-                    && length game.discardStack
-                    <= 1
-                    && not game.drawing
+                not (isHandPlayable (headPlayer game.players) game.mainCard game.drawing)
+                    && length game.drawStack == 0
+                    && length game.discardStack <= 1
+                    && game.drawing>0
               then
-                div [] [ displatBtnEndGame ]
+                div [] [ displayBtnEndGame ]
 
               else
                 div [] [ text "" ]
@@ -355,7 +357,7 @@ playingView game =
                 [ if length game.drawStack == 0 then
                     h4 []
                         [ text "The deck is empty"
-                        , if length game.discardStack <= 1 && not game.drawing then
+                        , if length game.discardStack <= 1 && game.drawing>0 then
                             div []
                                 [ text "and there's not any card left."
                                 ]
@@ -368,7 +370,7 @@ playingView game =
                     h4 [] [ text (fromInt (length game.drawStack)), text " cards left in the deck " ]
                 ]
             ]
-        , displayPlayers game.players (firstCard game.discardStack) game.drawing
+        , displayPlayers game.players (game.mainCard) game.drawing
         , div [ style "background-color" "LIGHTYELLOW" ]
             [ h3 [ style "background-color" "YELLOW", style "padding" "10px" ] [ text "GAME BOARD" ]
             , div [ style "overflow" "hidden", style "padding-left" "70px" ] [ displayCard (firstCard game.discardStack) Seen ]
@@ -376,7 +378,7 @@ playingView game =
             ]
         , hr [] []
         , div []
-            [ displatBtnEndGame
+            [ displayBtnEndGame
             , h4 [] [ text "UNO - Workshop ELM - October 2019" ]
             ]
         ]
@@ -424,12 +426,12 @@ displayInfoHand hand masterCard =
         text ((fromInt <| nbCardInHand hand) ++ " cards - " ++ (fromInt <| nbPointInHand hand) ++ " points")
 
 
-displayPlayers : List Player -> Card -> Bool -> Html Msg
+displayPlayers : List Player -> Card -> Int -> Html Msg
 displayPlayers players masterCard drawing =
     div [] (map (\p -> displayPlayer p masterCard (headPlayer players) drawing) (sortBy .id players))
 
 
-displayPlayer : Player -> Card -> Player -> Bool -> Html Msg
+displayPlayer : Player -> Card -> Player -> Int -> Html Msg
 displayPlayer player masterCard currentPlayer drawing =
     div []
         [ hr [] []
@@ -479,12 +481,12 @@ firstCard listCard =
             noCard
 
 
-displayHandCards : List Card -> Card -> Bool -> Html Msg
+displayHandCards : List Card -> Card -> Int -> Html Msg
 displayHandCards cards masterCard drawing =
     div [ style "overflow" "hidden", style "padding-left" "70px" ]
         (map
             (\c ->
-                if c.value == masterCard.value || c.color == masterCard.color then
+                if (c.value == masterCard.value || c.color == masterCard.color) && not ( masterCard.value==12 && drawing>1 )  then
                     a [ onClick (CardPlayed c) ]
                         [ displayCard c Playabled ]
 
@@ -549,7 +551,7 @@ gameOver players =
         , h2 [] [ text "The winner is " ]
         , h2 [] [ displayWinner players ]
         , hr [] []
-        , displayPlayers players noCard False
+        , displayPlayers players noCard 0
         ]
 
 
@@ -571,14 +573,14 @@ omitPlayedCard cardToOmit allPlayers =
     map (\p -> { p | hand = omitCard cardToOmit p.hand }) allPlayers
 
 
-drawCardToPlayer : List Player -> List Card -> List Player
-drawCardToPlayer players cards =
+drawCardToPlayer : List Player -> List Card -> Int -> List Player
+drawCardToPlayer players cards drawing =
     map
         (\p ->
             { p
                 | hand =
                     if (headPlayer players).id == p.id then
-                        reverse (firstCard cards :: reverse p.hand)
+                        reverse (append (take drawing cards) (reverse p.hand))
 
                     else
                         p.hand
@@ -661,6 +663,21 @@ getPermutationSens value sens =
     else
         sens
 
+getNumberDrawing : Card -> Int
+getNumberDrawing c =
+    if c.value==12 then
+        2
+    else
+        1
+
+setValue : Int -> Card -> Card
+setValue v card =
+    {
+        id=card.id,
+        value=v,
+        color=card.color
+    }
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case ( msg, model ) of
@@ -673,6 +690,7 @@ update msg model =
                 { game | 
                   --originStack = initShuffleCards drawStackInit generatedNewIds
                   originStack = drawStackInit
+                , mainCard = firstCard (initShuffleCards drawStackInit generatedNewIds)
                 , players = initHandOfPlayers ( drop 1 (initShuffleCards drawStackInit generatedNewIds)) game.players
                 , drawStack = drop (nbCardsByPlayer * nbPlayers + 1) (initShuffleCards drawStackInit generatedNewIds)
                 , discardStack = firstCard (initShuffleCards drawStackInit generatedNewIds) :: []
@@ -683,11 +701,12 @@ update msg model =
             (Playing
                 {
                   originStack = []
+                , mainCard = noCard
                 , permutationSens = ToRight  
                 , players = playersInit
                 , drawStack = []
                 , discardStack =  []
-                , drawing = False
+                , drawing = 1
                 }
                 , Random.generate DistributeDrawStack newIndicesGenerator)
 
@@ -707,7 +726,8 @@ update msg model =
                             (omitPlayedCard cardPlayed game.players)
                             (getPermutationSens cardPlayed.value game.permutationSens)
                         , discardStack = cardPlayed :: game.discardStack
-                        , drawing = False
+                        , drawing = getNumberDrawing cardPlayed
+                        , mainCard = cardPlayed
                     }
                  , Cmd.none    
                  )
@@ -715,9 +735,10 @@ update msg model =
         ( DrawCard, Playing game ) ->
             (Playing
                 { game
-                    | players = drawCardToPlayer game.players game.drawStack
-                    , drawStack = omitCard (firstCard game.drawStack) game.drawStack
-                    , drawing = True
+                    | players = drawCardToPlayer game.players game.drawStack game.drawing
+                    , drawStack = drop game.drawing game.drawStack
+                    , drawing = 0
+                    --, mainCard = setValue -1 game.mainCard
                 }
              , Cmd.none    
             )
@@ -735,7 +756,7 @@ update msg model =
             (Playing
                 { game
                     | players = permutePlayer game.players game.permutationSens
-                    , drawing = False
+                    , drawing = 1
                 }
              , Cmd.none    
             )
