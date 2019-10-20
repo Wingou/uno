@@ -260,11 +260,11 @@ convertIntToColor n =
 
 
 isHandPlayable : Player -> Card -> Int -> Bool
-isHandPlayable player masterCard drawing =
-    if masterCard.value==12 && drawing==0 then
+isHandPlayable player mainCard drawing =
+    if mainCard.value==12 && drawing==0 then
         False
     else
-        case filter (\h -> h.value == masterCard.value || h.color == masterCard.color) player.hand of
+        case filter (\h -> h.value == mainCard.value || h.color == mainCard.color) player.hand of
             [] ->
                 False
 
@@ -418,8 +418,8 @@ tailPlayer listPlayer =
 
 
 displayInfoHand : List Card -> Card -> Html Msg
-displayInfoHand hand masterCard =
-    if masterCard == noCard then
+displayInfoHand hand mainCard =
+    if mainCard == noCard then
         text ((fromInt <| nbPointInHand hand) ++ " points")
 
     else
@@ -427,12 +427,12 @@ displayInfoHand hand masterCard =
 
 
 displayPlayers : List Player -> Card -> Int -> Html Msg
-displayPlayers players masterCard drawing =
-    div [] (map (\p -> displayPlayer p masterCard (headPlayer players) drawing) (sortBy .id players))
+displayPlayers players mainCard drawing =
+    div [] (map (\p -> displayPlayer p mainCard (headPlayer players) drawing) (sortBy .id players))
 
 
 displayPlayer : Player -> Card -> Player -> Int -> Html Msg
-displayPlayer player masterCard currentPlayer drawing =
+displayPlayer player mainCard currentPlayer drawing =
     div []
         [ hr [] []
         , div
@@ -441,7 +441,7 @@ displayPlayer player masterCard currentPlayer drawing =
             ]
             [ b [ style "font-size" "20px" ] [ text player.name ]
             , span [] [ text " - " ]
-            , span [] [ displayInfoHand player.hand masterCard ]
+            , span [] [ displayInfoHand player.hand mainCard ]
             ]
         , div
             [ if currentPlayer == player then
@@ -452,7 +452,7 @@ displayPlayer player masterCard currentPlayer drawing =
             ]
             [ br [] []
             , if currentPlayer == player then
-                displayHandCards player.hand masterCard drawing
+                displayHandCards player.hand mainCard drawing
 
               else
                 displayCards player.hand NotPlayabled
@@ -481,17 +481,56 @@ firstCard listCard =
             noCard
 
 
+displayPlayabled : Card -> Html Msg
+displayPlayabled h = a [ onClick (CardPlayed h) ] [ displayCard h Playabled ]
+
+displayNotPlayabled : Card -> Html Msg
+displayNotPlayabled h = displayCard h NotPlayabled
+
+displayRegular : Card -> Card -> Html Msg
+displayRegular h mainCard =
+    if h.value==mainCard.value || h.color==mainCard.color || h.color==Black then
+        displayPlayabled h
+    else
+        displayNotPlayabled h
+
 displayHandCards : List Card -> Card -> Int -> Html Msg
-displayHandCards cards masterCard drawing =
+displayHandCards cards mainCard drawing =
     div [ style "overflow" "hidden", style "padding-left" "70px" ]
         (map
-            (\c ->
-                if (c.value == masterCard.value || c.color == masterCard.color) && not ( masterCard.value==12 && drawing>1 )  then
-                    a [ onClick (CardPlayed c) ]
-                        [ displayCard c Playabled ]
+            (\h ->
+                case mainCard.value of
+                    12 -> --- Si MC=[+2]=12
+                        case drawing of 
+                            0 -> ------- prénalité consommé --> On passe !
+                                displayNotPlayabled h
+                            1 -> ------- précédent joueur a consommé la pénalité --> Regular
+                                displayRegular h mainCard
+                            _ -> ------- >=2 pénalités non consommées --> surenchère || conso ?
+                                if h.value==12 || (h.color==Black && h.value==1) then --- [+2] ou [+4] jouables
+                                    displayPlayabled h
+                                else
+                                    displayNotPlayabled h
 
-                else
-                    displayCard c NotPlayabled
+                    1 -> ------ si c'est un [+4]
+                        if mainCard.color==Black then
+                            case drawing of 
+                                0 -> ------- prénalité consommé --> On passe !
+                                    displayNotPlayabled h
+                                1 -> ------- précédent joueur a consommé la pénalité --> Regular
+                                    displayRegular h mainCard
+                                _ -> ------- >=2 pénalités non consommées --> surenchère || conso ?
+                                    if h.value==12 || (h.color==Black && h.value==1) then --- [+2] ou [+4] jouables
+                                        displayPlayabled h
+                                    else
+                                        displayNotPlayabled h
+
+                        else
+                            displayRegular h mainCard
+
+                    _ ->    ----- Si MC=[0-9] ou [@]=11
+                        displayRegular h mainCard
+
             )
             cards
         )
@@ -663,12 +702,23 @@ getPermutationSens value sens =
     else
         sens
 
-getNumberDrawing : Card -> Int
-getNumberDrawing c =
-    if c.value==12 then
-        2
-    else
-        1
+getNumberDrawing : Card -> Int -> Int
+getNumberDrawing c drawing =
+    case c.value of
+        12 -> ---- si c'est un [+2]
+            if drawing==1 then ------ drawing init pas utilsé
+                2   ----------------- On applique la pénalité au suivant [+2]
+            else
+                drawing + 2 --------- une pénalité existe déjà, on y ajoute [+2]
+        1 -> 
+            if c.color==Black then ---- On a joué un [+4]
+                if drawing==1 then ------ drawing init pas utilsé
+                    4   ----------------- On applique la pénalité au suivant [+4]
+                else
+                    drawing + 4 --------- une pénalité existe déjà, on y ajoute [+4]
+            else
+                1 ---- C'est un [1] Color normal -> On init le drawing à 1
+        _ -> 1 ------ On init le drawing à 1
 
 setValue : Int -> Card -> Card
 setValue v card =
@@ -726,7 +776,7 @@ update msg model =
                             (omitPlayedCard cardPlayed game.players)
                             (getPermutationSens cardPlayed.value game.permutationSens)
                         , discardStack = cardPlayed :: game.discardStack
-                        , drawing = getNumberDrawing cardPlayed
+                        , drawing = getNumberDrawing cardPlayed game.drawing
                         , mainCard = cardPlayed
                     }
                  , Cmd.none    
