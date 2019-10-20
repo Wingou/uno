@@ -55,6 +55,7 @@ type alias Game =
     , drawStack : List Card
     , discardStack : List Card
     , drawing : Int
+    , penality : Bool
     }
   
 
@@ -370,7 +371,7 @@ playingView game =
                     h4 [] [ text (fromInt (length game.drawStack)), text " cards left in the deck " ]
                 ]
             ]
-        , displayPlayers game.players (game.mainCard) game.drawing
+        , displayPlayers game.players (game.mainCard) game.drawing game.penality
         , div [ style "background-color" "LIGHTYELLOW" ]
             [ h3 [ style "background-color" "YELLOW", style "padding" "10px" ] [ text "GAME BOARD" ]
             , div [ style "overflow" "hidden", style "padding-left" "70px" ] [ displayCard (firstCard game.discardStack) Seen ]
@@ -426,13 +427,13 @@ displayInfoHand hand mainCard =
         text ((fromInt <| nbCardInHand hand) ++ " cards - " ++ (fromInt <| nbPointInHand hand) ++ " points")
 
 
-displayPlayers : List Player -> Card -> Int -> Html Msg
-displayPlayers players mainCard drawing =
-    div [] (map (\p -> displayPlayer p mainCard (headPlayer players) drawing) (sortBy .id players))
+displayPlayers : List Player -> Card -> Int -> Bool -> Html Msg
+displayPlayers players mainCard drawing penality =
+    div [] (map (\p -> displayPlayer p mainCard (headPlayer players) drawing penality) (sortBy .id players)) 
 
 
-displayPlayer : Player -> Card -> Player -> Int -> Html Msg
-displayPlayer player mainCard currentPlayer drawing =
+displayPlayer : Player -> Card -> Player -> Int -> Bool -> Html Msg
+displayPlayer player mainCard currentPlayer drawing penality =
     div []
         [ hr [] []
         , div
@@ -452,7 +453,7 @@ displayPlayer player mainCard currentPlayer drawing =
             ]
             [ br [] []
             , if currentPlayer == player then
-                displayHandCards player.hand mainCard drawing
+                displayHandCards player.hand mainCard drawing penality
 
               else
                 displayCards player.hand NotPlayabled
@@ -494,42 +495,44 @@ displayRegular h mainCard =
     else
         displayNotPlayabled h
 
-displayHandCards : List Card -> Card -> Int -> Html Msg
-displayHandCards cards mainCard drawing =
+displayHandCards : List Card -> Card -> Int -> Bool -> Html Msg
+displayHandCards cards mainCard drawing penality =
     div [ style "overflow" "hidden", style "padding-left" "70px" ]
         (map
             (\h ->
-                case mainCard.value of
-                    12 -> --- Si MC=[+2]=12
-                        case drawing of 
-                            0 -> ------- prénalité consommé --> On passe !
-                                displayNotPlayabled h
-                            1 -> ------- précédent joueur a consommé la pénalité --> Regular
-                                displayRegular h mainCard
-                            _ -> ------- >=2 pénalités non consommées --> surenchère || conso ?
-                                if h.value==12 || (h.color==Black && h.value==1) then --- [+2] ou [+4] jouables
-                                    displayPlayabled h
-                                else
-                                    displayNotPlayabled h
-
-                    1 -> ------ si c'est un [+4]
-                        if mainCard.color==Black then
-                            case drawing of 
-                                0 -> ------- prénalité consommé --> On passe !
-                                    displayNotPlayabled h
-                                1 -> ------- précédent joueur a consommé la pénalité --> Regular
-                                    displayRegular h mainCard
-                                _ -> ------- >=2 pénalités non consommées --> surenchère || conso ?
-                                    if h.value==12 || (h.color==Black && h.value==1) then --- [+2] ou [+4] jouables
-                                        displayPlayabled h
-                                    else
-                                        displayNotPlayabled h
-
+                case (mainCard.value, mainCard.color, drawing) of
+                    (12, _ ,0 ) -> 
+                        if penality then
+                            displayNotPlayabled h    
                         else
                             displayRegular h mainCard
+                    (12, _ ,1 ) -> 
+                            displayRegular h mainCard
+                    (12, _ ,_ ) -> 
+                        if h.value==12 || (h.color==Black && h.value==1) then --- [+2] ou [+4] jouables
+                            displayPlayabled h
+                        else
+                            displayNotPlayabled h
 
-                    _ ->    ----- Si MC=[0-9] ou [@]=11
+                    (1, Black, 0) -> 
+                        if penality then
+                            displayNotPlayabled h    
+                        else
+                            displayRegular h mainCard
+                    (1, Black ,1 ) -> 
+                            displayRegular h mainCard
+                    (1, Black ,_ ) -> 
+                        if h.color==Black && h.value==1 then --- [+2] ou [+4] jouables
+                            displayPlayabled h
+                        else
+                            displayNotPlayabled h
+
+                            
+
+                    (_,_,_) ->
                         displayRegular h mainCard
+
+   
 
             )
             cards
@@ -590,7 +593,7 @@ gameOver players =
         , h2 [] [ text "The winner is " ]
         , h2 [] [ displayWinner players ]
         , hr [] []
-        , displayPlayers players noCard 0
+        , displayPlayers players noCard 0 False
         ]
 
 
@@ -757,6 +760,7 @@ update msg model =
                 , drawStack = []
                 , discardStack =  []
                 , drawing = 1
+                , penality = False
                 }
                 , Random.generate DistributeDrawStack newIndicesGenerator)
 
@@ -778,6 +782,7 @@ update msg model =
                         , discardStack = cardPlayed :: game.discardStack
                         , drawing = getNumberDrawing cardPlayed game.drawing
                         , mainCard = cardPlayed
+                        , penality = (cardPlayed.value==12 || (cardPlayed.value==1 && cardPlayed.color==Black))
                     }
                  , Cmd.none    
                  )
@@ -788,6 +793,7 @@ update msg model =
                     | players = drawCardToPlayer game.players game.drawStack game.drawing
                     , drawStack = drop game.drawing game.drawStack
                     , drawing = 0
+                    --, penality = False
                     --, mainCard = setValue -1 game.mainCard
                 }
              , Cmd.none    
@@ -807,6 +813,7 @@ update msg model =
                 { game
                     | players = permutePlayer game.players game.permutationSens
                     , drawing = 1
+                    , penality = False
                 }
              , Cmd.none    
             )
