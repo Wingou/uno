@@ -1,4 +1,4 @@
-module Main exposing (Card, CardState(..), Color(..), Game, Model(..), Msg(..), Player, Stack(..), cHeight, cMargin, cOffsetX, cOffsetY, cPlayableUp, cSpriteSize, cStepX, cStepY, cWidth, cardPosX, cardPosY, cardSprite, colorY, convertColorToString, discardStackInit, displatBtnEndGame, displayBtnDraw, displayBtnFillDraw, displayBtnPass, displayCard, displayCards, displayHandCards, displayInfoHand, displayPlayer, displayPlayers, displayWinner, drawCardToPlayer, drawStackInit, firstCard, firstPlayer, gameOver, hasWinner, initialModel, isHandPlayable, main, nbCardInHand, nbPointInHand, noCard, noPlayer, notStartedView, omitCard, omitPlayedCard, permutePlayer, playersInit, playingView, tailCard, toPx, update, view)
+module Main exposing (Card, CardState(..), Color(..), Game, Model(..), Msg(..), Player, Stack(..), cHeight, cMargin, cOffsetX, cOffsetY, cPlayableUp, cSpriteSize, cStepX, cStepY, cWidth, cardPosX, cardPosY, cardSprite, colorY, convertColorToString, discardStackInit, displatBtnEndGame, displayBtnDraw, displayBtnFillDraw, displayBtnPass, displayCard, displayCards, displayHandCards, displayInfoHand, displayPlayer, displayPlayers, displayWinner, drawCardToPlayer, drawStackInit, firstCard, headPlayer, gameOver, hasWinner, initialModel, isHandPlayable, main, nbCardInHand, nbPointInHand, noCard, noPlayer, notStartedView, omitCard, omitPlayedCard, permutePlayer, playersInit, playingView, tailCard, toPx, update, view)
 
 import Browser
 import Debug exposing (log)
@@ -27,7 +27,7 @@ type Color
     | Green
     | Blue
     | Yellow
-    | Joker
+    | Black
     | Back
 
 
@@ -44,20 +44,18 @@ type alias Player =
     , hand : List Card
     }
 
+type PermutationSens = ToRight | ToLeft
 
 type alias Game =
     { 
       originStack : List Card
+    , permutationSens : PermutationSens
     , players : List Player
     , drawStack : List Card
     , discardStack : List Card
     , drawing : Bool
     }
-
-type alias Dice = 
-    {
-        face : Int
-    }
+  
 
 type Model
     = NotStarted
@@ -91,11 +89,11 @@ buildZero : List Card
 buildZero =
         map (\c -> { id=0, value=0, color=convertIntToColor(c)} ) (range 1 4)
 
-buildJoker : List Card
-buildJoker = 
+buildBlack : List Card
+buildBlack = 
     concat (
         map (\_ -> 
-            map (\v -> { id=0, value=v, color=Joker}) (range 1 2)
+            map (\v -> { id=0, value=v, color=Black}) (range 1 2)
         ) (range 1 4)
     )
 
@@ -103,7 +101,7 @@ drawStackInit : List Card
 drawStackInit = 
     buildZero ++ 
     buildRegular ++
-    buildJoker
+    buildBlack
     
 
 initialModel : () -> (Model, Cmd Msg)
@@ -213,7 +211,7 @@ colorY color =
         Green ->
             3
 
-        Joker ->
+        Black ->
             4           
         
         Back ->
@@ -256,7 +254,7 @@ convertIntToColor n =
         2 -> Blue
         3 -> Yellow
         4 -> Green
-        5 -> Joker
+        5 -> Black
         _ -> Back
 
 
@@ -298,12 +296,12 @@ playingView game =
                 [ style "padding" "2px"
                 , style "background-color" "LIGHTBLUE"
                 ]
-                [ b [ style "font-size" "20px" ] [ text (firstPlayer game.players).name ]
+                [ b [ style "font-size" "20px" ] [ text (headPlayer game.players).name ]
                 ]
 
             -- pour PLAY
             -- il faut Jouable
-            , if isHandPlayable (firstPlayer game.players) (firstCard game.discardStack) then
+            , if isHandPlayable (headPlayer game.players) (firstCard game.discardStack) then
                 b [] [ text "Play a card" ]
 
               else
@@ -342,7 +340,7 @@ playingView game =
             -- il faut Deck <=1 carte
             -- il faut Pas déjà Piocher
             , if
-                not (isHandPlayable (firstPlayer game.players) (firstCard game.discardStack))
+                not (isHandPlayable (headPlayer game.players) (firstCard game.discardStack))
                     && length game.drawStack
                     == 0
                     && length game.discardStack
@@ -400,14 +398,21 @@ noCard =
     }
 
 
-firstPlayer : List Player -> Player
-firstPlayer listPlayer =
+headPlayer : List Player -> Player
+headPlayer listPlayer =
     case head listPlayer of
         Just player ->
             player
-
         Nothing ->
             noPlayer
+
+tailPlayer : List Player -> List Player
+tailPlayer listPlayer =
+    case tail listPlayer of
+        Just players ->
+            players
+        Nothing ->
+            []
 
 
 displayInfoHand : List Card -> Card -> Html Msg
@@ -421,7 +426,7 @@ displayInfoHand hand masterCard =
 
 displayPlayers : List Player -> Card -> Bool -> Html Msg
 displayPlayers players masterCard drawing =
-    div [] (map (\p -> displayPlayer p masterCard (firstPlayer players) drawing) (sortBy .id players))
+    div [] (map (\p -> displayPlayer p masterCard (headPlayer players) drawing) (sortBy .id players))
 
 
 displayPlayer : Player -> Card -> Player -> Bool -> Html Msg
@@ -510,8 +515,8 @@ convertColorToString color =
         Yellow ->
             "Yellow"
 
-        Joker ->
-            "Joker"
+        Black ->
+            "Black"
 
         Back ->
             "Back"
@@ -548,15 +553,13 @@ gameOver players =
         ]
 
 
-permutePlayer : List Player -> List Player
-permutePlayer listPlayers =
-    case tail listPlayers of
-        Just tailPlayers ->
-            reverse (firstPlayer listPlayers :: reverse tailPlayers)
-
-        Nothing ->
-            []
-
+permutePlayer : List Player -> PermutationSens -> List Player
+permutePlayer listPlayers sens =
+    case sens of
+        ToRight -> 
+            reverse (headPlayer listPlayers :: reverse (tailPlayer listPlayers))
+        ToLeft -> 
+            headPlayer (reverse listPlayers) :: reverse (tailPlayer (reverse listPlayers))
 
 omitCard : Card -> List Card -> List Card
 omitCard cardToOmit listCards =
@@ -574,7 +577,7 @@ drawCardToPlayer players cards =
         (\p ->
             { p
                 | hand =
-                    if (firstPlayer players).id == p.id then
+                    if (headPlayer players).id == p.id then
                         reverse (firstCard cards :: reverse p.hand)
 
                     else
@@ -601,8 +604,8 @@ hasWinner players lastCardPlayed =
         |> isEmpty
         |> not
 
-nbJokers : Int
-nbJokers = 8
+nbBlacks : Int
+nbBlacks = 8
 
 nbColors : Int
 nbColors = 4
@@ -611,7 +614,7 @@ nbCardsByColor : Int
 nbCardsByColor = 26 -- (0 à 9 + double + Sens + Pass)*2
 
 nbCards : Int
-nbCards = nbColors * nbCardsByColor + nbJokers
+nbCards = nbColors * nbCardsByColor + nbBlacks
 
 nbPlayers : Int
 nbPlayers = 3
@@ -649,7 +652,14 @@ initHandOfPlayers : List Card -> List Player -> List Player
 initHandOfPlayers cards players =
     map (\p -> { p | hand = take nbCardsByPlayer ( drop (nbCardsByPlayer * (p.id-1)) cards) }) players
 
-    -------------------------------------------------------------------ici-----
+getPermutationSens : Int -> PermutationSens -> PermutationSens
+getPermutationSens value sens =
+    if value==11 then
+        case sens of
+            ToRight -> ToLeft
+            ToLeft -> ToRight
+    else
+        sens
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -660,13 +670,12 @@ update msg model =
 
         (DistributeDrawStack generatedNewIds, Playing game )  ->
             (Playing
-                {
+                { game | 
                   --originStack = initShuffleCards drawStackInit generatedNewIds
                   originStack = drawStackInit
                 , players = initHandOfPlayers ( drop 1 (initShuffleCards drawStackInit generatedNewIds)) game.players
                 , drawStack = drop (nbCardsByPlayer * nbPlayers + 1) (initShuffleCards drawStackInit generatedNewIds)
                 , discardStack = firstCard (initShuffleCards drawStackInit generatedNewIds) :: []
-                , drawing = False
                 }
                 , Cmd.none)
      
@@ -674,6 +683,7 @@ update msg model =
             (Playing
                 {
                   originStack = []
+                , permutationSens = ToRight  
                 , players = playersInit
                 , drawStack = []
                 , discardStack =  []
@@ -690,7 +700,12 @@ update msg model =
             else
                 (Playing
                     { game
-                        | players = permutePlayer <| omitPlayedCard cardPlayed game.players
+                        | 
+                        permutationSens = getPermutationSens cardPlayed.value game.permutationSens
+                        , players = 
+                          permutePlayer 
+                            (omitPlayedCard cardPlayed game.players)
+                            (getPermutationSens cardPlayed.value game.permutationSens)
                         , discardStack = cardPlayed :: game.discardStack
                         , drawing = False
                     }
@@ -719,7 +734,7 @@ update msg model =
         ( Pass, Playing game ) ->
             (Playing
                 { game
-                    | players = permutePlayer game.players
+                    | players = permutePlayer game.players game.permutationSens
                     , drawing = False
                 }
              , Cmd.none    
