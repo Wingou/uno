@@ -301,20 +301,26 @@ playingView game =
                 [ style "padding" "2px"
                 , style "background-color" "LIGHTBLUE"
                 ]
-                [ b [ style "font-size" "20px" ] [ text (headPlayer game.players).name ]
+                [ b [ style "font-size" "20px" ] [ 
+                    text (convertPermutationSens game.permutationSens),
+                    text " ",
+                    text (headPlayer game.players).name,
+                    text " ",
+                    text (convertPermutationSens game.permutationSens)
+                    ]
                 ]
 
             -- pour PLAY
             -- il faut Jouable
-            , if isHandPlayable (headPlayer game.players) game.mainCard game.drawing then
-                b [] [ text "Play a card" ]
+            -- , if isHandPlayable (headPlayer game.players) game.mainCard game.drawing then
+            --     b [] [ text "Play a card" ]
 
-              else
-                b [] [ text "You can't play any card" ]
+            --   else
+            --     b [] [ text "You can't play any card" ]
 
             -- pour PASS
             -- il faut Piocher
-            , if game.drawing==0 then
+            , if game.drawing==0 || (game.mainCard.value==10 && game.penality==True) then
                 div [] [ displayBtnPass ]
 
               else
@@ -324,8 +330,11 @@ playingView game =
             -- il faut Pas Déjà Piocher
             -- il faut Draw plein
             , if game.drawing>0 && length game.drawStack > 0 then
-                div [] [ displayBtnDraw game.drawing]
-
+                case (game.mainCard.value, game.mainCard.color, game.penality) of
+                    (10, _, True) ->
+                        div [] [ text "" ]
+                    (_, _, _) ->
+                        div [] [ displayBtnDraw game.drawing]
               else
                 div [] [ text "" ]
 
@@ -417,6 +426,12 @@ tailPlayer listPlayer =
         Nothing ->
             []
 
+convertPermutationSens : PermutationSens -> String
+convertPermutationSens permutationSens =
+    case permutationSens of
+    ToRight -> "v"
+    ToLeft -> "^" 
+
 
 displayInfoHand : List Card -> Card -> Html Msg
 displayInfoHand hand mainCard =
@@ -443,11 +458,14 @@ displayPlayer player mainCard currentPlayer drawing penality =
             [ b [ style "font-size" "20px" ] [ text player.name ]
             , span [] [ text " - " ]
             , span [] [ displayInfoHand player.hand mainCard ]
+            , span [] [ text " - " ]
             ]
         , div
             [ if currentPlayer == player then
-                style "background-color" "GREEN"
-
+                if penality then 
+                    style "background-color" "RED"
+                else
+                    style "background-color" "GREEN"
               else
                 style "background-color" "WHITE"
             ]
@@ -526,8 +544,12 @@ displayHandCards cards mainCard drawing penality =
                             displayPlayabled h
                         else
                             displayNotPlayabled h
-
-                            
+                    (10, _ ,_ ) ->
+                        if penality then
+                            displayNotPlayabled h    
+                        else
+                            displayRegular h mainCard
+                           
 
                     (_,_,_) ->
                         displayRegular h mainCard
@@ -782,7 +804,7 @@ update msg model =
                         , discardStack = cardPlayed :: game.discardStack
                         , drawing = getNumberDrawing cardPlayed game.drawing
                         , mainCard = cardPlayed
-                        , penality = (cardPlayed.value==12 || (cardPlayed.value==1 && cardPlayed.color==Black))
+                        , penality = (cardPlayed.value==12 || (cardPlayed.value==1 && cardPlayed.color==Black) || cardPlayed.value==10)
                     }
                  , Cmd.none    
                  )
