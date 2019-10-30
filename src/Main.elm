@@ -1,14 +1,15 @@
-module Main exposing (Card, CardState(..), Color(..), Game, Model(..), Msg(..), Player, Stack(..), cHeight, cMargin, cOffsetX, cOffsetY, cPlayableUp, cSpriteSize, cStepX, cStepY, cWidth, cardPosX, cardPosY, cardSprite, colorY, convertColorToString, discardStackInit, displayBtnEndGame, displayBtnDraw, displayBtnFillDraw, displayBtnPass, displayCard, displayCards, displayHandCards, displayInfoHand, displayPlayer, displayPlayers, displayWinner, drawCardToPlayer, drawStackInit, firstCard, headPlayer, gameOver, hasWinner, initialModel, isHandPlayable, main, nbCardInHand, nbPointInHand, noCard, noPlayer, notStartedView, omitCard, omitPlayedCard, permutePlayer, playersInit, playingView, tailCard, toPx, update, view)
+module Main exposing (..)
 
 import Browser
 import Debug exposing (log)
-import Html exposing (Html, a, b, br, button, div, h1, h2, h3, h4, h5, hr, span, text)
-import Html.Attributes exposing (href, style, title)
+import Html exposing (Html, a, b, br, button, div, h1, h2, h3, h4, h5, hr, span, text, img)
+import Html.Attributes exposing (style, title)
 import Html.Events exposing (onClick)
 import List exposing (filter, head, isEmpty, length, map, reverse, sortBy, sum, tail, repeat, range, map2, take, drop, concat, append )
 import String exposing (fromInt)
 import Basics exposing (round)
 import Random
+import Asset exposing (src, unoSprite, arrowUp, arrowDown, Image, path, pathFilename)
 
 type CardState
     = Playabled
@@ -114,50 +115,51 @@ initialModel _ =
 discardStackInit : List Card
 discardStackInit = []
 
-toPx : Int -> String
-toPx v =
-    fromInt v ++ "px"
+toPx : Float -> Int -> String
+toPx zoom v =
+    fromInt (round ((toFloat v)*zoom)) ++ "px"
+
+cZoomAction : Float
+cZoomAction=1.0
 
 cZoom : Float
 cZoom = 0.8
 
 cPlayableUp : Int
-cPlayableUp =
-    round(13*cZoom)
+cPlayableUp =13
+    --round(13*cZoom)
 
 
 cStepX : Int
-cStepX =
-    round (92*cZoom)
+cStepX =92
+    --round (92*cZoom)
 
 
 cStepY : Int
-cStepY =
-    round  (132*cZoom)
-
+cStepY =132
+    --round  (132*cZoom)
 
 cWidth : Int
-cWidth =
-    round (82*cZoom)
+cWidth =82
+    --round (82*cZoom)
 
 
 cHeight : Int
-cHeight =
-    round (118*cZoom)
-
+cHeight =118
+    --round (118*cZoom)
 
 cSpriteSize : Int
-cSpriteSize =
-    round (1216*cZoom)
+cSpriteSize =1216
+    --round (1216*cZoom)
 
 cOffsetX : Int
-cOffsetX =
-    round (-15*cZoom)
+cOffsetX =-15
+    --round (-15*cZoom)
 
 
 cOffsetY : Int
-cOffsetY =
-    round (-1*cZoom)
+cOffsetY =-1
+    --round (-1*cZoom)
 
 cMargin : Int
 cMargin = -20
@@ -166,7 +168,8 @@ cMargin = -20
 
 cardSprite : String
 cardSprite =
-    "https://ena.uno/img/ena-sprite.png"
+    pathFilename unoSprite
+    --"https://ena.uno/img/ena-sprite.png"
 
 
 cardPosX : Card -> Int
@@ -187,25 +190,25 @@ displayCard : Card -> CardState -> Html Msg
 displayCard c cardState =
     div
         [ style "background-image" ("url(" ++ cardSprite ++ ")")
-        , style "width" (toPx cWidth)
-        , style "height" (toPx (cHeight + cPlayableUp))
-        , style "background-position-x" (toPx (cardPosX c))
-        , style "background-position-y" (toPx (cardPosY c cardState))
+        , style "width" (toPx cZoom cWidth)
+        , style "height" (toPx cZoom (cHeight + cPlayableUp))
+        , style "background-position-x" (toPx cZoom (cardPosX c))
+        , style "background-position-y" (toPx cZoom (cardPosY c cardState))
         , style "float" "left"
-        , style "background-size" (toPx cSpriteSize)
-        , style "margin-left" (toPx cMargin)
+        , style "background-size" (toPx cZoom cSpriteSize)
+        , style "margin-left" (toPx cZoom cMargin)
         ]
         []
 
-displayCardAction : Card -> String -> Html Msg
-displayCardAction c cartText  =
+displayActionCard : Card -> String -> Html Msg
+displayActionCard c cartText  =
     div
         [ style "background-image" ("url(" ++ cardSprite ++ ")")
-        , style "width" (toPx cWidth)
-        , style "height" (toPx (cHeight + cPlayableUp))
-        , style "background-position-x" (toPx (cardPosX c))
-        , style "background-position-y" (toPx (cardPosY c Seen))
-        , style "background-size" (toPx cSpriteSize)
+        , style "width" (toPx cZoomAction cWidth)
+        , style "height" (toPx cZoomAction (cHeight + cPlayableUp))
+        , style "background-position-x" (toPx cZoomAction (cardPosX c))
+        , style "background-position-y" (toPx cZoomAction (cardPosY c Seen))
+        , style "background-size" (toPx cZoomAction cSpriteSize)
         , style "float" "left"
         ]
         [  div[ 
@@ -306,31 +309,51 @@ displayBtnEndGame =
     button [ onClick GameEnded, style "width" "200px" ] [ text "End the game" ]
 
 
-playingView : Game -> Html Msg
-playingView game =
-    div [ style "background-color" "AZURE" ]
-        [ 
-            ------ header
-            div [style "float" "left"
-                ,style "margin-left" "50px"]
-                [   displayCardAction (firstCard game.discardStack) "",
-                    a [onClick DrawCard, title "Draw cards here !"]
-                        [displayCardAction (noCard) ""]]
-          , div [style "float" "right"
-                ,style "margin-right" "50px"]
-                [   a [onClick GameEnded, title "End the game !"]
-                        [displayCardAction {noCard | value=2} "Game Over"]]
-          , div []
+displayArrow : PermutationSens -> Image
+displayArrow permutationSens =
+    case permutationSens of
+        ToRight -> arrowDown
+        ToLeft -> arrowUp
+
+displayHeaderActionCards : Game -> Html Msg
+displayHeaderActionCards game =
+            div [ style "margin-left" "50px"]
+                    [ displayActionCard (firstCard game.discardStack) ""
+                    , a [onClick DrawCard, title "Draw cards here !"]
+                        [displayActionCard noCard ""]
+                    ]
+
+displayHeaderInfoCards : Game -> Html Msg
+displayHeaderInfoCards game =
+            div [style "margin-right" "50px"]
+                    [ 
+                        a [onClick GameEnded, title "End the game !", style "float" "right"]
+                        [displayActionCard {noCard | value=2} "Game Over"],
+                        
+                        div[style "float" "right"][img [src (displayArrow game.permutationSens),
+                                        style "width" (toPx cZoomAction cWidth), style "height" (toPx cZoomAction cHeight), style "margin-top" (toPx cZoomAction cPlayableUp)][ ]
+                            ]
+                    
+                    ]
+
+
+displayHeaderBoard : Game -> Html Msg
+displayHeaderBoard game = 
+    div[ style "display" "flex"][
+        div[style "flex" "3"][ displayHeaderActionCards game],
+        div[style "flex" "6"  ][ displayHeaderMaster game],
+        div[style "flex" "3"][ displayHeaderInfoCards game]
+    ]
+
+displayHeaderMaster : Game -> Html Msg
+displayHeaderMaster game = 
+          div []
             [ div
                 [ style "padding" "2px"
                 , style "background-color" "LIGHTBLUE"
                 ]
                 [ b [ style "font-size" "20px" ] [ 
-                    text (convertPermutationSens game.permutationSens),
-                    text " ",
-                    text (headPlayer game.players).name,
-                    text " ",
-                    text (convertPermutationSens game.permutationSens)
+                    text (headPlayer game.players).name
                     ]
                 ]
 
@@ -405,9 +428,13 @@ playingView game =
                 ]
             ]
 
-            --------------------- Header
 
-            
+playingView : Game -> Html Msg
+playingView game =
+    div [ style "background-color" "AZURE" ]
+        [ 
+         displayHeaderBoard game
+
         , displayPlayers game.players (game.mainCard) game.drawing game.penality
         -- , div [ style "background-color" "LIGHTYELLOW" ]
         --     [ h3 [ style "background-color" "YELLOW", style "padding" "10px" ] [ text "GAME BOARD" ]
@@ -437,6 +464,12 @@ noCard =
     , color = Back
     }
 
+emptyCard : Card
+emptyCard =
+    { id = 0
+    , value = 4
+    , color = Back
+    }
 
 headPlayer : List Player -> Player
 headPlayer listPlayer =
@@ -453,13 +486,6 @@ tailPlayer listPlayer =
             players
         Nothing ->
             []
-
-convertPermutationSens : PermutationSens -> String
-convertPermutationSens permutationSens =
-    case permutationSens of
-    ToRight -> "v"
-    ToLeft -> "^" 
-
 
 displayInfoHand : List Card -> Card -> Html Msg
 displayInfoHand hand mainCard =
@@ -789,14 +815,17 @@ update msg model =
             ( model, Random.generate DistributeDrawStack newIndicesGenerator)
 
         (DistributeDrawStack generatedNewIds, Playing game )  ->
+            let 
+                shuffleCards=initShuffleCards drawStackInit generatedNewIds
+            in
             (Playing
                 { game | 
                   --originStack = initShuffleCards drawStackInit generatedNewIds
                   originStack = drawStackInit
-                , mainCard = firstCard (initShuffleCards drawStackInit generatedNewIds)
-                , players = initHandOfPlayers ( drop 1 (initShuffleCards drawStackInit generatedNewIds)) game.players
-                , drawStack = drop (nbCardsByPlayer * nbPlayers + 1) (initShuffleCards drawStackInit generatedNewIds)
-                , discardStack = firstCard (initShuffleCards drawStackInit generatedNewIds) :: []
+                , mainCard = firstCard shuffleCards
+                , players = initHandOfPlayers ( drop 1 shuffleCards) game.players
+                , drawStack = drop (nbCardsByPlayer * nbPlayers + 1) shuffleCards
+                , discardStack = firstCard shuffleCards :: []
                 }
                 , Cmd.none)
      
@@ -815,20 +844,25 @@ update msg model =
                 , Random.generate DistributeDrawStack newIndicesGenerator)
 
         ( CardPlayed cardPlayed, Playing game ) ->
+            let
+                let_OmitPlayedCard=omitPlayedCard cardPlayed game.players
+            in
             if hasWinner game.players cardPlayed then
-                (GameOver (omitPlayedCard cardPlayed game.players)
+                (GameOver let_OmitPlayedCard
                  , Cmd.none    
                 )
 
             else
+                let
+                    let_PermutationSens = getPermutationSens cardPlayed.value game.permutationSens
+                in
                 (Playing
-                    { game
-                        | 
-                        permutationSens = getPermutationSens cardPlayed.value game.permutationSens
+                    { game |
+                        permutationSens = let_PermutationSens
                         , players = 
                           permutePlayer 
-                            (omitPlayedCard cardPlayed game.players)
-                            (getPermutationSens cardPlayed.value game.permutationSens)
+                            let_OmitPlayedCard
+                            let_PermutationSens
                         , discardStack = cardPlayed :: game.discardStack
                         , drawing = getNumberDrawing cardPlayed game.drawing
                         , mainCard = cardPlayed

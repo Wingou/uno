@@ -28,5 +28,9 @@ GRN [ 0] [ 1] [ 2] [ 3] [ 4] [ 5] [ 6] [ 7] [ 8] [ 9] [ X] [ @] [+2]
 BCK [ ?] [+4] [ #]
 
 
+# Rules by card
 
+[ X] = The next player cannot do anything. He passes his turn.
+[ @] = The direction of the turn is reversed.
+[+2] = The next player get draw 2 cards and connot play, unless he wants to play a [+2] ou [+4]. In this case, he doesn't draw the cards.
 
