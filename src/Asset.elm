@@ -1,5 +1,5 @@
 
-module Asset exposing (Image, src, unoSprite, arrowDown, arrowUp, path, pathFilename)
+module Asset exposing (Image, src, unoSprite, path, pathFilename)
 
 import Html exposing (Attribute)
 import Html.Attributes as Attr
@@ -15,18 +15,7 @@ type Image
 
 unoSprite : Image
 unoSprite =
-    image "unoSprite.png"
-
-
-arrowUp : Image
-arrowUp =
-    image "up.png"
-
-    
-arrowDown : Image
-arrowDown =
-    image "down.png"
-
+    image "unoSprite7.png"
 
 path : String
 path = "/assets/images/"
