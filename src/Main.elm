@@ -11,6 +11,7 @@ import Basics exposing (round)
 import Random
 import Asset exposing (src, unoSprite, Image, path, pathFilename)
 import Tuple
+import Debug exposing (log)
 
 type CardState
     = Playabled
@@ -31,6 +32,8 @@ type Color
     | Yellow
     | Black
 
+type StackShadow = Right | Left
+
 type alias Card =
     { id : Int
     , value : Int
@@ -44,7 +47,7 @@ type alias Player =
     , hand : List Card
     }
 
-type Reverse = ToRight | ToLeft
+type Reverse = ToRight | ToLeft | ToStay
 
 type alias Game =
     { 
@@ -75,6 +78,7 @@ type Msg
     | Pass
     | DemandeNewListCards
     | DistributeDrawStack (List Int)
+    | SetWildCardColor Color
 
 --- Build --> 2 x 4 couleurs x (de 1 à 12 <=> 1, 2, ..., 9 + 3 Spé )
 buildRegular : List Card
@@ -223,11 +227,12 @@ cardPosY c cState =
         cOffsetY - toFloat(colorY c.color) * cStepY
 
 
-displayStack : Int -> Card -> Html Msg
-displayStack index c =
+displayStack : Int -> StackShadow -> Card -> Html Msg
+displayStack index shadow c =
     let
         z=cZoom
-        margin=-(92/100) * cWidth
+        marginRight=-(90/100) * cWidth
+        marginLeft=-(110/100) * cWidth
         i=stackThickness-index
     in
     div
@@ -237,7 +242,12 @@ displayStack index c =
         , style "background-position-x" (toPx z (cardPosX c))
         , style "background-position-y" (toPx z (cardPosY c Seen))
         , style "background-size" (toPx z cSpriteSize)
-        , style "margin-right" (toPx z margin)
+        , 
+            if shadow==Left then
+                style "margin-left" (toPx z marginLeft)
+            else
+                style "margin-right" (toPx z marginRight)
+
         , style "z-index" (fromInt i)
         ]
         []
@@ -271,6 +281,8 @@ displayActionCard c cartTextDiv  =
         , style "background-position-x" (toPx z (cardPosX c))
         , style "background-position-y" (toPx z (cardPosY c Seen))
         , style "background-size" (toPx z cSpriteSize)
+        --, style "margin-right" (toPx z -cWidth)
+        , style "z-index" "100"
         ]
         [cartTextDiv]
 
@@ -369,56 +381,93 @@ isHandPlayable player mainCard drawing =
             --   else
             --     div [] [ text "" ]
 
-innerDrawActionCard : Int -> Int -> Int -> Color -> Bool ->  Html Msg 
-innerDrawActionCard drawing nbDrawCards mCardValue mCardColor penality =
-            let
-                cardToBeDisplayed =
-                    if drawing==0 then
-                        card_NoDraw
-                    else
-                        card_Draw
+innerDrawActionCard : Int -> Int -> Html Msg 
+innerDrawActionCard  nbDrawCards drawing =
+           let
+                        displayFlexTop = if drawing>0 then
+                                [ text "Draw", br[][] , text ("+" ++ (fromInt drawing) )]
+                            else    
+                                [ text "  ", br[][], text " " ]
 
-                displayFlewTop = if drawing==0 then
-                            [ text "  ", br[][], text " " ]
-                            else
-                            [ text "Draw", br[][] , text ("+" ++ (fromInt drawing) )]
-                            
-                            
-            in 
-                displayActionCard cardToBeDisplayed (
-                    div[style "display" "flex",
+                        cardToBeDisplayed = if drawing>0 then
+                                                card_Draw
+                                            else
+                                                card_DrawNo
+           in
+
+                displayActionCard cardToBeDisplayed  
+                    (div[style "display" "flex",
                         style "flex-direction" "column",
                         style "height" (toPx cZoomAction cHeight),
                         --style "margin-top" (toPx cZoomAction cPlayableUp),
-                        style "color" "WHITE" ]
+                        style "color" "YELLOW"
+                        ]
                     [
                         div [style "flex" "50%",
                              style "margin-top" "20px",
                              style "font-size" "20px"
                             ]
-                            displayFlewTop,
+                            displayFlexTop,
                         div [style "flex" "50%",
                                 style "font-size" "13px",
                                 style "margin-bottom" "-15px"]
                                 [text (fromInt nbDrawCards), br[][], text " cards", br[][], text "left"]
-                    ]
-            )
+                    ])
+            
 
-displayDrawActionCard : Int -> Int -> Int -> Color -> Bool ->  Html Msg
-displayDrawActionCard drawing nbDrawCards mCardValue mCardColor penality =
-        if drawing>0 then
-        a [onClick DrawCard][
-           innerDrawActionCard drawing nbDrawCards mCardValue mCardColor penality
-        ]
-        else
-            innerDrawActionCard drawing nbDrawCards mCardValue mCardColor penality
+displayDrawActionCard : Int -> Int -> Int -> Card -> Bool -> Html Msg
+displayDrawActionCard drawing nbDrawCards nbDiscardCards masterCard penality =
+        let
+            cardToBeDisplayed=
+                if drawing==0 then
+                    if nbDrawCards==0 then
+                        "cardToBeDisplayed_DrawEmpty"
+                    else
+                        "cardToBeDisplayed_DrawNo"
+                        
+                else
+                    if nbDrawCards==0 then
+                        if nbDiscardCards>1 then
+                            "cardToBeDisplayed_DrawRefill"
+                        else
+                            "cardToBeDisplayed_DrawEmpty"
+                    else
+                        if drawing > nbDrawCards then
+                            if nbDiscardCards>1 then
+                                "cardToBeDisplayed_DrawRefill"
+                            else
+                                "cardToBeDisplayed_DrawEmpty"
+                        else
+                            if masterCard.value==10 && masterCard.color/=Black && penality then
+                                "cardToBeDisplayed_DrawNo"
+                            else
+                                "cardToBeDisplayed_Draw"
 
+                    --     if drawing>0 && nbDrawCards>0 then
+                    --         if mCardValue==10 && penality then
+                    --             False
+                    --         else
+                    --             True
+                    --     else
+                    --         False
 
+                    -- cardToBeDisplayed = if drawable then
+                    --         card_Draw
+                    --     else    
+                    --         card_NoDraw
 
-displayBtnFillDraw : Html Msg
-displayBtnFillDraw =
-    button [ onClick RefillDrawStack, style "width" "200px" ] [ text "Fill the deck" ]
-
+        in
+        case cardToBeDisplayed of
+            "cardToBeDisplayed_DrawNo" ->
+                    displayActionCard card_DrawNo (innerDrawActionCard nbDrawCards drawing) 
+            "cardToBeDisplayed_DrawRefill" ->
+                a [onClick RefillDrawStack]
+                    [displayActionCard card_DrawRefill (div [][])]
+            "cardToBeDisplayed_DrawEmpty" ->
+                    displayActionCard card_DrawEmpty (div [][]) 
+            _ ->
+                a [onClick DrawCard,  style "z-index" "100"]
+                    [ displayActionCard card_Draw (innerDrawActionCard nbDrawCards drawing) ]
 
 displayBtnEndGame : Html Msg
 displayBtnEndGame =
@@ -436,29 +485,30 @@ displayHeaderRight game =
 displayHeaderBoard : Game -> Html Msg
 displayHeaderBoard game = 
     div[ style "display" "flex"][
-        div[style "flex" "3"][  ],
+        div[style "flex" "3"][ displayHeaderMaster game ],
         div[style "flex" "6" ][
                 displayPlayerName game,
-                div [style "display" "flex", style "border" "solid"][
-                    div[style "flex" "2", style "border" "solid"                    ,
-                    style "display" "flex",
-                    style "justify-content" "center"
-                    --style "flex-direction" "column"
-                    ]
-                    [displayHeaderMaster game]
-                    ,
-                    div[style "flex" "8", style "border" "solid", style "display" "flex", style "justify-content" "center"]
+                div [style "display" "flex"][
+                    div[style "flex" "6", style "display" "flex", style "justify-content" "center"]
                     (
-                        map (\(i,c)-> displayStack i c ) 
+                        map (\(i,c)-> displayStack i Right c ) 
                             <| take stackThickness
                             <| indexedMap Tuple.pair game.discardStack
                     ),
-                    div[style "flex" "2", style "border" "solid",
+                    div[style "flex" "6",
                     style "display" "flex",
                     style "justify-content" "center"
-                    ][
-                            displayDrawActionCard game.drawing (length game.drawStack) game.mainCard.value game.mainCard.color game.penality                        
                     ]
+                                (  
+                              (
+                                  displayDrawActionCard game.drawing (length game.drawStack) (length game.discardStack) game.mainCard game.penality
+                              )  
+                              :: (
+                                  map (\(i,c)-> displayStack i Left card_Back ) 
+                                    <| take stackThickness
+                                    <| indexedMap Tuple.pair game.drawStack)
+                                )
+                    
                     ]
                 ],
         div[style "flex" "3"][ displayHeaderRight game]
@@ -512,7 +562,7 @@ displayHeaderMaster game =
             -- il faut Draw vide
             -- il faut Pas déjà Piocher
              if length game.drawStack == 0 && length game.discardStack > 1 && game.drawing>0 then
-                div [] [ displayBtnFillDraw ]
+                div [] [ text "Click on the DRAW pile to regenerate it." ]
 
               else
                 div [] [text "" ]
@@ -549,6 +599,20 @@ displayHeaderMaster game =
                     div [] [ text "" ]
 --                    h4 [] [ text (fromInt (length game.drawStack)), text " cards left in the deck " ]
                 ]
+            ,
+                if game.penality && game.mainCard.value==14 && game.mainCard.color==Black then
+                    div[][text "Choose your color", 
+                        div[style "display" "flex", style "justify-content" "center"]
+                        (    map (\i ->
+                                    a [onClick (SetWildCardColor (convertIntToColor i)) ][
+                                        displayCard {id=0, value=14, color=convertIntToColor i } Seen
+                                    ])
+                            (range 1 4)
+                        )
+                    ]
+                else
+                    div[][text ""]
+
             ]
 
 
@@ -600,8 +664,8 @@ card_Draw =
     , color = Black
     }
 
-card_NoDraw : Card
-card_NoDraw =
+card_DrawNo : Card
+card_DrawNo =
     { id = 0
     , value = 2
     , color = Black
@@ -618,6 +682,13 @@ card_DrawEmpty : Card
 card_DrawEmpty =
     { id = 0
     , value = 4
+    , color = Black
+    }
+
+card_DrawRefill : Card
+card_DrawRefill =
+    { id = 0
+    , value = 5
     , color = Black
     }
 
@@ -889,6 +960,8 @@ reverseDirection listPlayers sens =
             reverse (headPlayer listPlayers :: reverse (tailPlayer listPlayers))
         ToLeft -> 
             headPlayer (reverse listPlayers) :: reverse (tailPlayer (reverse listPlayers))
+        ToStay ->
+            listPlayers
 
 omitCard : Card -> List Card -> List Card
 omitCard cardToOmit listCards =
@@ -985,8 +1058,12 @@ getReverse : Int -> Reverse -> Reverse
 getReverse value sens =
     if value==11 then
         case sens of
-            ToRight -> ToLeft
-            ToLeft -> ToRight
+            ToRight ->
+                ToLeft
+            ToLeft -> 
+                ToRight
+            ToStay -> 
+                ToStay
     else
         sens
 
@@ -1032,7 +1109,7 @@ update msg model =
                   originStack = drawStackInit
                 , mainCard = firstCard shuffleCards
                 , players = initHandOfPlayers ( drop 1 shuffleCards) game.players
-                , drawStack = take 10 (drop (nbCardsByPlayer * nbPlayers + 1) shuffleCards)
+                , drawStack = take 3 (drop (nbCardsByPlayer * nbPlayers + 1) shuffleCards)
                 , discardStack = firstCard shuffleCards :: []
                 }
                 , Cmd.none)
@@ -1061,23 +1138,37 @@ update msg model =
                 )
 
             else
-                let
-                    let_Reverse = getReverse cardPlayed.value game.reverse
-                in
-                (Playing
-                    { game |
-                        reverse = let_Reverse
-                        , players = 
-                          reverseDirection 
-                            let_OmitPlayedCard
-                            let_Reverse
-                        , discardStack = cardPlayed :: game.discardStack
-                        , drawing = getNumberDrawing cardPlayed game.drawing
-                        , mainCard = cardPlayed
-                        , penality = (cardPlayed.value==12 || (cardPlayed.value==13 && cardPlayed.color==Black) || cardPlayed.value==10)
-                    }
-                 , Cmd.none    
-                 )
+                if cardPlayed.value==14 && cardPlayed.color==Black then
+                        (Playing
+                            { game |
+                                players = 
+                                    reverseDirection 
+                                    let_OmitPlayedCard
+                                    ToStay
+                                , discardStack = cardPlayed :: game.discardStack
+                                , mainCard = cardPlayed
+                                , penality = True
+                            }
+                        , Cmd.none    
+                        )
+                else
+                        let
+                            let_Reverse = getReverse cardPlayed.value game.reverse
+                        in
+                        (Playing
+                            { game |
+                                reverse = let_Reverse
+                                , players = 
+                                        reverseDirection 
+                                            let_OmitPlayedCard
+                                            let_Reverse
+                                , discardStack = cardPlayed :: game.discardStack
+                                , drawing = getNumberDrawing cardPlayed game.drawing
+                                , mainCard = cardPlayed
+                                , penality = (cardPlayed.value==12 || (cardPlayed.value==13 && cardPlayed.color==Black) || cardPlayed.value==10)
+                            }
+                        , Cmd.none    
+                        )
         
         ( DrawCard, Playing game ) ->
             (Playing
@@ -1108,6 +1199,24 @@ update msg model =
                     , penality = False
                 }
              , Cmd.none    
+            )
+
+        (SetWildCardColor color, Playing game) ->
+            let
+                coloredWildCard = game.mainCard
+            in
+            (Playing
+                { game |
+                    players = 
+                            reverseDirection 
+                                game.players
+                                game.reverse
+                    , discardStack = { coloredWildCard | color=color} :: tailCard game.discardStack
+                    , drawing = getNumberDrawing game.mainCard game.drawing
+                    , mainCard = { coloredWildCard | color=color}
+                    , penality = False
+                }
+            , Cmd.none    
             )
 
         ( DoNothing, _ ) ->
