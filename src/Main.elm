@@ -5,11 +5,12 @@ import Debug exposing (log)
 import Html exposing (Html, a, b, br, button, div, h1, h2, h3, h4, h5, hr, span, text, img)
 import Html.Attributes exposing (style, title)
 import Html.Events exposing (onClick)
-import List exposing (filter, head, isEmpty, length, map, reverse, sortBy, sum, tail, repeat, range, map2, take, drop, concat, append )
+import List exposing (filter, head, isEmpty, length, map, reverse, sortBy, sum, tail, repeat, range, map2, take, drop, concat, append, indexedMap)
 import String exposing (fromInt)
 import Basics exposing (round)
 import Random
 import Asset exposing (src, unoSprite, Image, path, pathFilename)
+import Tuple
 
 type CardState
     = Playabled
@@ -149,6 +150,10 @@ cZoomAction=1.0
 cZoom : Float
 cZoom = 1.0
 
+cZoomAvatar : Float
+cZoomAvatar = 1.2
+
+
 cPlayableUp : Float
 cPlayableUp =13
     --round(13*cZoom)
@@ -191,11 +196,13 @@ cOffsetY : Float
 cOffsetY = -1
     --round (-1*cZoom)
 
-cMargin : Float
-cMargin = -cWidth/3
+
+cMargin : Float ----- cacher 25% de la carte
+cMargin = (-25/100) * cWidth
 -- -20
 
-
+stackThickness : Int
+stackThickness = 6
 
 cardSprite : String
 cardSprite =
@@ -212,37 +219,76 @@ cardPosY : Card -> CardState -> Float
 cardPosY c cState =
     if cState == Playabled then
         cOffsetY - toFloat (colorY c.color) * cStepY - cPlayableUp
-
     else
         cOffsetY - toFloat(colorY c.color) * cStepY
 
 
-displayCard : Card -> CardState -> Html Msg
-displayCard c cardState =
+displayStack : Int -> Card -> Html Msg
+displayStack index c =
+    let
+        z=cZoom
+        margin=-(92/100) * cWidth
+        i=stackThickness-index
+    in
     div
         [ style "background-image" ("url(" ++ cardSprite ++ ")")
-        , style "width" (toPx cZoom cWidth)
-        , style "height" (toPx cZoom (cHeight + cPlayableUp))
-        , style "background-position-x" (toPx cZoom (cardPosX c))
-        , style "background-position-y" (toPx cZoom (cardPosY c cardState))
+        , style "width" (toPx z cWidth)
+        , style "height" (toPx z (cHeight + cPlayableUp))
+        , style "background-position-x" (toPx z (cardPosX c))
+        , style "background-position-y" (toPx z (cardPosY c Seen))
+        , style "background-size" (toPx z cSpriteSize)
+        , style "margin-right" (toPx z margin)
+        , style "z-index" (fromInt i)
+        ]
+        []
+
+displayCard : Card -> CardState -> Html Msg
+displayCard c cardState =
+    let
+        z=cZoom
+    in
+    div
+        [ style "background-image" ("url(" ++ cardSprite ++ ")")
+        , style "width" (toPx z cWidth)
+        , style "height" (toPx z (cHeight + cPlayableUp))
+        , style "background-position-x" (toPx z (cardPosX c))
+        , style "background-position-y" (toPx z (cardPosY c cardState))
+        , style "background-size" (toPx z cSpriteSize)
         , style "float" "left"
-        , style "background-size" (toPx cZoom cSpriteSize)
-        , style "margin-left" (toPx cZoom cMargin)
+        , style "margin-left" (toPx z cMargin)
         ]
         []
 
 displayActionCard : Card -> Html Msg -> Html Msg
 displayActionCard c cartTextDiv  =
+    let
+        z=cZoomAction  
+    in
     div
         [ style "background-image" ("url(" ++ cardSprite ++ ")")
-        , style "width" (toPx cZoomAction cWidth)
-        , style "height" (toPx cZoomAction (cHeight + cPlayableUp))
-        , style "background-position-x" (toPx cZoomAction (cardPosX c))
-        , style "background-position-y" (toPx cZoomAction (cardPosY c Seen))
-        , style "background-size" (toPx cZoomAction cSpriteSize)
-        --, style "float" "left"
+        , style "width" (toPx z cWidth)
+        , style "height" (toPx z (cHeight + cPlayableUp))
+        , style "background-position-x" (toPx z (cardPosX c))
+        , style "background-position-y" (toPx z (cardPosY c Seen))
+        , style "background-size" (toPx z cSpriteSize)
         ]
         [cartTextDiv]
+
+displayAvatarCard : Card -> Html Msg
+displayAvatarCard c =
+    let
+        z = cZoomAvatar
+    in
+    div
+        [ style "background-image" ("url(" ++ cardSprite ++ ")")
+        , style "width" (toPx z cWidth)
+        , style "height" (toPx z (cHeight + cPlayableUp))
+        , style "background-position-x" (toPx z (cardPosX c))
+        , style "background-position-y" (toPx z (cardPosY c Seen))
+        , style "background-size" (toPx z cSpriteSize)
+        --, style "margin-left" (toPx z cMargin)
+        ]
+        []
 
 colorY : Color -> Int
 colorY color =
@@ -343,7 +389,7 @@ innerDrawActionCard drawing nbDrawCards mCardValue mCardColor penality =
                     div[style "display" "flex",
                         style "flex-direction" "column",
                         style "height" (toPx cZoomAction cHeight),
-                        style "margin-top" (toPx cZoomAction cPlayableUp),
+                        --style "margin-top" (toPx cZoomAction cPlayableUp),
                         style "color" "WHITE" ]
                     [
                         div [style "flex" "50%",
@@ -366,17 +412,7 @@ displayDrawActionCard drawing nbDrawCards mCardValue mCardColor penality =
         ]
         else
             innerDrawActionCard drawing nbDrawCards mCardValue mCardColor penality
-    --button [ onClick DrawCard, style "width" "200px" ] [ text ("Draw " ++ fromInt(drawing)++ " cards") ]
 
-
-displayPassActionCard : Html Msg
-displayPassActionCard =
-    div [] [
-        a [onClick Pass][
-            displayActionCard card_Pass (div[][])
-        ]
-    ]
-    --button [ onClick Pass, style "width" "200px" ] [ text "Pass" ]
 
 
 displayBtnFillDraw : Html Msg
@@ -404,13 +440,23 @@ displayHeaderBoard game =
         div[style "flex" "6" ][
                 displayPlayerName game,
                 div [style "display" "flex", style "border" "solid"][
-                    div[style "flex" "2", style "border" "solid"][
-                            displayActionCard (firstCard game.discardStack) (div[][])
-                    ],
-                    div[style "flex" "8", style "border" "solid"][
-                            displayHeaderMaster game
-                     ],
-                    div[style "flex" "2", style "border" "solid"][
+                    div[style "flex" "2", style "border" "solid"                    ,
+                    style "display" "flex",
+                    style "justify-content" "center"
+                    --style "flex-direction" "column"
+                    ]
+                    [displayHeaderMaster game]
+                    ,
+                    div[style "flex" "8", style "border" "solid", style "display" "flex", style "justify-content" "center"]
+                    (
+                        map (\(i,c)-> displayStack i c ) 
+                            <| take stackThickness
+                            <| indexedMap Tuple.pair game.discardStack
+                    ),
+                    div[style "flex" "2", style "border" "solid",
+                    style "display" "flex",
+                    style "justify-content" "center"
+                    ][
                             displayDrawActionCard game.drawing (length game.drawStack) game.mainCard.value game.mainCard.color game.penality                        
                     ]
                     ]
@@ -420,8 +466,7 @@ displayHeaderBoard game =
 
 displayPlayerName : Game -> Html Msg
 displayPlayerName game =
-                div [  style "padding" "2px"
-                    , style "background-color" "YELLOW"
+                div [style "background-color" "YELLOW"
                 ]
                 [ 
                     text (headPlayer game.players).name
@@ -669,27 +714,30 @@ displayPlayer player mainCard currentPlayer drawing penality reverse =
                     isCurrentPlayer=currentPlayer==player
                 in
                 case (isCurrentPlayer, penality) of
-                    (True, True) -> style "background-color" "RED"
-                    (True, False) -> style "background-color" "GREEN"
-                    (False , _ ) ->style "background-color" "WHITE"
-
-            --   if currentPlayer == player then
-            --     if penality then 
-            --         style "background-color" "RED"
-            --     else
-            --         style "background-color" "GREEN"
-            --   else
-            --     style "background-color" "WHITE"
+                    
+                    (True, True) ->
+                            style "background-color" "RED"
+                    
+                    (True, False) ->
+                            style "background-color" "GREEN"
+                    
+                    (False , _ ) ->
+                            style "background-color" "WHITE"
             ]
             [ 
-                div[style "flex" "1", style "margin-left" "70px"][ displayCard (card_Player player.id) Seen ],
-                div[style "flex" "10", style "margin-top" "10px", style "margin-bottom" "10px"][
+                div[style "flex" "1", style "margin-bottom" "10px", style "margin-left" "50px"][ displayAvatarCard (card_Player player.id) ],
+                div[style "flex" "10", style "margin-top" "10px", style "margin-bottom" "10px",
+                        style "display" "flex",
+                        style "justify-content" "flex-end",
+                        style "flex-direction" "column"
+                
+                ][
                                  if currentPlayer == player then
                                     displayHandCards player.hand mainCard drawing penality
                                 else
                                     displayCards player.hand NotPlayabled
                 ],
-                div[style "flex" "1"]
+                div[style "flex" "1", style "margin-top" "10px", style "margin-bottom" "10px"]
                     [
                     displayNextCard player mainCard currentPlayer drawing penality reverse 
                     ]
@@ -733,7 +781,7 @@ displayRegular h mainCard =
 
 displayHandCards : List Card -> Card -> Int -> Bool -> Html Msg
 displayHandCards cards mainCard drawing penality =
-    div [ style "overflow" "hidden", style "padding-left" "70px" ]
+    div [ style "margin-left" (toPx 1 -cMargin)]
         (map
             (\h ->
                 case (mainCard.value, mainCard.color, drawing) of
@@ -781,7 +829,7 @@ displayHandCards cards mainCard drawing penality =
 
 displayCards : List Card -> CardState -> Html Msg
 displayCards cards cardState =
-    div [ style "overflow" "hidden", style "padding-left" "70px" ] (map (\c -> displayCard c cardState) cards)
+        div [ style "margin-left" (toPx 1 -cMargin)] (map (\c -> displayCard c cardState) cards)
 
 
 convertColorToString : Color -> String
@@ -981,11 +1029,10 @@ update msg model =
             in
             (Playing
                 { game | 
-                  --originStack = initShuffleCards drawStackInit generatedNewIds
                   originStack = drawStackInit
                 , mainCard = firstCard shuffleCards
                 , players = initHandOfPlayers ( drop 1 shuffleCards) game.players
-                , drawStack = drop (nbCardsByPlayer * nbPlayers + 1) shuffleCards
+                , drawStack = take 10 (drop (nbCardsByPlayer * nbPlayers + 1) shuffleCards)
                 , discardStack = firstCard shuffleCards :: []
                 }
                 , Cmd.none)
