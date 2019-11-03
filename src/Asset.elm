@@ -1,5 +1,5 @@
 
-module Asset exposing (Image, src, unoSprite, path, pathFilename)
+module Asset exposing (Image, src, unoSprite, path, pathFilename, imgStars)
 
 import Html exposing (Attribute)
 import Html.Attributes as Attr
@@ -12,6 +12,9 @@ type Image
 
 -- IMAGES
 
+imgStars : Image
+imgStars =
+    image "stars.png"
 
 unoSprite : Image
 unoSprite =
