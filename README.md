@@ -1,7 +1,7 @@
 # Get Started
 
 ## GitHub :
-Ajouter un repo /finance
+Ajouter un repo /myprojet
 
 https://github.com/Wingou/uno
 
@@ -17,7 +17,7 @@ $> npm install npm@latest -g
 ## Create-Elm-App : Install
 $> npm install create-elm-app -g
 
-## Create Finance
+## Create le dossier de myprojet
 
 sur \Dev
 
@@ -28,7 +28,7 @@ Puis, copier-le dans le dossier de votre appli \uno
 
 Ensuite, supprimer le dossier \MonApp
 
-$> cd finance
+$> cd Projet
 
 $> elm-app start
 
