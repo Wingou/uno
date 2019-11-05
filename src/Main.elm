@@ -2,14 +2,14 @@ module Main exposing (..)
 
 import Browser
 import Debug exposing (log)
-import Html exposing (Html, a, b, br, button, div, h1, h2, h3, h4, h5, hr, span, text, img)
-import Html.Attributes exposing (style, title)
-import Html.Events exposing (onClick)
+import Html exposing (Html, a, b, br, button, div, h1, h2, h3, h4, h5, hr, span, text, img, input)
+import Html.Attributes exposing (style, title, placeholder)
+import Html.Events exposing (onClick, onInput)
 import List exposing (filter, head, isEmpty, length, map, reverse, sortBy, sum, tail, repeat, range, map2, take, drop, concat, append, indexedMap)
 import String exposing (fromInt)
 import Basics exposing (round)
 import Random
-import Asset exposing (src, unoSprite, Image, path, pathFilename, imgStars)
+import Asset exposing (src, ImageString, path, pathFilename, imgStars, spriteCards, spriteAvatars, panelAvatars, imgAvatarBorder1)
 import Tuple
 import Debug exposing (log)
 
@@ -32,7 +32,14 @@ type Color
     | Yellow
     | Black
 
-type StackShadow = Right | Left
+type StackShadow
+    = Right 
+    | Left
+
+type Position
+    = Absolute 
+    | Relative 
+    | Static
 
 type alias Card =
     { id : Int
@@ -45,6 +52,8 @@ type alias Player =
     { id : Int
     , name : String
     , hand : List Card
+    , avatar : Card
+    , avatarStyle : Card
     }
 
 type Reverse = ToRight | ToLeft | ToStay
@@ -60,10 +69,18 @@ type alias Game =
     , drawing : Int
     , penality : Bool
     }
-  
+
+type alias PlayerModel =
+    {
+        inputName : String,
+        inputAvatar : Int,
+        inputAvatarStyle : Int,
+        players : List Player
+    }
 
 type Model
     = NotStarted
+    | SettingAvatar PlayerModel
     | Playing Game
     | GameOver (List Player)
 
@@ -79,8 +96,19 @@ type Msg
     | DemandeNewListCards
     | DistributeDrawStack (List Int)
     | SetWildCardColor Color
+    | RequestSetAvatar
+    | SetPlayerName String
+    | SetAvatar Int
+    | SetAvatarStyle Int
+    | ValiderAvatar Int
 
---- Build --> 2 x 4 couleurs x (de 1 à 12 <=> 1, 2, ..., 9 + 3 Spé )
+----------------------------------------
+
+limitedDrawCards : Int
+limitedDrawCards = 5
+    -- 108
+
+--- Build 96 --> 2 x 4 couleurs x (de 1 à 12 <=> 1, 2, ..., 9 + 3 Spé )
 buildRegular : List Card
 buildRegular =
     concat ( map (\_->
@@ -92,12 +120,12 @@ buildRegular =
     ) (range 1 2)
     )
 
---- Build --> 4 couleurs de la carte 0
+--- Build 4 --> 4 couleurs de la carte 0
 buildZero : List Card
 buildZero =
         map (\c -> { id=0, value=0, color=convertIntToColor(c)} ) (range 1 4)
 
---- Build --> 4 x les 2 jokers
+--- Build 8 --> 4 x les 2 jokers
 buildBlack : List Card
 buildBlack = 
     concat (
@@ -111,15 +139,16 @@ drawStackInit =
     buildZero ++ 
     buildRegular ++
     buildBlack
-    
+
+discardStackInit : List Card
+discardStackInit = []
+
 
 initialModel : () -> (Model, Cmd Msg)
 initialModel _ =
     (NotStarted, Cmd.none)
 
 
-discardStackInit : List Card
-discardStackInit = []
 
 --------------------------
 ------------- CardValues
@@ -199,10 +228,6 @@ cMargin = (-25/100) * cWidth
 stackThickness : Int
 stackThickness = 6
 
-cardSprite : String
-cardSprite =
-    pathFilename unoSprite
-
 cardPosX : Card -> Float
 cardPosX c =
     cOffsetX - toFloat c.value * cStepX
@@ -225,7 +250,7 @@ displayStack index shadow c =
         i=stackThickness-index
     in
     div
-        [ style "background-image" ("url(" ++ cardSprite ++ ")")
+        [ style "background-image" ("url(" ++ spriteCards ++ ")")
         , style "width" (toPx z cWidth)
         , style "height" (toPx z (cHeight + cPlayableUp))
         , style "background-position-x" (toPx z (cardPosX c))
@@ -247,7 +272,7 @@ displayCard c cardState =
         z=cZoom
     in
     div
-        [ style "background-image" ("url(" ++ cardSprite ++ ")")
+        [ style "background-image" ("url(" ++ spriteCards ++ ")")
         , style "width" (toPx z cWidth)
         , style "height" (toPx z (cHeight + cPlayableUp))
         , style "background-position-x" (toPx z (cardPosX c))
@@ -264,7 +289,7 @@ displayActionCard c cartTextDiv  =
         z=cZoomAction  
     in
     div
-        [ style "background-image" ("url(" ++ cardSprite ++ ")")
+        [ style "background-image" ("url(" ++ spriteCards ++ ")")
         , style "width" (toPx z cWidth)
         , style "height" (toPx z (cHeight + cPlayableUp))
         , style "background-position-x" (toPx z (cardPosX c))
@@ -274,18 +299,26 @@ displayActionCard c cartTextDiv  =
         ]
         [cartTextDiv]
 
-displayAvatarCard : Card -> Html Msg
-displayAvatarCard c =
+displayAvatarCard : Card -> Position -> Html Msg
+displayAvatarCard c position =
     let
         z = cZoomAvatar
     in
     div
-        [ style "background-image" ("url(" ++ cardSprite ++ ")")
+        [ style "background-image" ("url(" ++ spriteAvatars ++ ")")
         , style "width" (toPx z cWidth)
         , style "height" (toPx z (cHeight + cPlayableUp))
         , style "background-position-x" (toPx z (cardPosX c))
         , style "background-position-y" (toPx z (cardPosY c Seen))
         , style "background-size" (toPx z cSpriteSize)
+        , 
+            case position of
+                Absolute ->
+                    style "position" "absolute"
+                Relative ->
+                    style "position" "relative"
+                Static ->
+                    style "position" "static"
         ]
         []
 
@@ -310,26 +343,32 @@ colorY color =
 playersInit : List Player
 playersInit =
     [ { id = 1
-      , name = "ALEX"
+      , name = "noname"
       , hand =[]            
+      , avatar = card_Back
+      , avatarStyle = card_Back
       }
     , { id = 2
-      , name = "KAIZAR"
+      , name = "noname"
       , hand =[]            
+      , avatar = card_Back
+      , avatarStyle = card_Back
       }
     , { id = 3
-      , name = "THEO"
+      , name = "noname"
       , hand =[]            
+      , avatar = card_Back
+      , avatarStyle = card_Back
       }
     ]
 
 
-notStartedView : Html Msg
-notStartedView =
+homeView : Html Msg
+homeView =
     div []
         [ br [] []
         , h1 [] [ text "UNO - ELM" ]
-        , button [ onClick RequestedStartGame ]
+        , button [ onClick RequestSetAvatar ]
             [ h3 []
                 [ text "  LET'S START...  "
                 ]
@@ -344,13 +383,8 @@ notStartedView =
         , style "background-position" "center"
         , style "background-attachment" "fixed"
         , style "background-position" "center" 
---        , style "background-size" (toPx z cSpriteSize)
-
-        ]
-        [
-           
-        ]
-        ]
+        ][]
+    ]
 
 convertIntToColor : Int -> Color
 convertIntToColor n =
@@ -605,6 +639,180 @@ displayHeaderMaster game =
 
             ]
 
+avatarToBeSet : List Player -> Player
+avatarToBeSet listPlayers = 
+    case head <| filter (\p -> p.name=="noname") <| listPlayers of
+            Just p -> 
+                p
+            Nothing ->
+                noPlayer
+
+setAvatarView : PlayerModel -> Html Msg
+setAvatarView model =
+    div [][
+            let
+                withoutAvatarPlayer = avatarToBeSet model.players
+                playerId = withoutAvatarPlayer.id
+            in
+            -- if withoutAvatarPlayer == noPlayer then
+            --     div[][text "Plus de joueurs disponible"]
+            -- else
+                div[][
+                      div [style "display" "flex"][
+                             --------- GAUCHE
+                             div[style "flex" "6"][
+                                    -- --- AVATAR --------------------- 
+                                     div [][
+                                        div [ style "background-color" "YELLOW"][ text "Choose your avatar"]
+                                        , div [
+                                              style "display" "flex",
+                                                    style "justify-content" "center", 
+                                                    style "height" (toPx cZoomAvatar (cHeight-2*cMargin))
+                                        ]
+                                                 (map (\v -> 
+                                                         div [ onClick (SetAvatar v) ]
+                                                             [displayAvatarCard (getCard v Red) Static]
+                                                      )
+                                                      (range 1 5))
+                                                ]
+                                    -- --- STYLE --------------------- 
+                                    , div [][
+                                        div [ style "background-color" "YELLOW"][ text "Choose your style"]
+                                        , div [
+                                              style "display" "flex",
+                                                    style "justify-content" "center", 
+                                                    style "height" (toPx cZoomAvatar (cHeight-2*cMargin))
+                                        ]
+                                                (map (\v -> 
+                                                        div [ onClick (SetAvatarStyle v) ]
+                                                            [displayAvatarCard (getCard v Black) Static]
+                                                    )
+                                                    (range 1 5))
+                                            ]
+                                            
+
+                                    -- --- Example AVATAR -------------
+                                    , div [][
+                                            div [ style "background-color" "YELLOW"][ text "To submit your choice, click on your Avatar card below " ]
+                                            , div [
+                                                onClick (ValiderAvatar playerId),
+                                                  style "display" "flex",
+                                                    style "justify-content" "center", 
+                                                    style "height" (toPx cZoomAvatar (cHeight-2*cMargin))]
+                                            [
+                                                displayAvatarCard (getCard model.inputAvatar Red) Absolute,
+                                                displayAvatarCard (getCard model.inputAvatarStyle Black) Absolute
+                                            ]
+                                        ]
+
+                                     -- --- LET GO ! -------------
+                                    , div[][
+                                         div [ style "background-color" "YELLOW"][ text "START" ]
+                                         , button [ onClick RequestedStartGame ] [ text "Let's start"]
+                                    ]
+                             ]
+                             --------- DROITE
+                            ,div[style "flex" "6"][
+
+                                ------- RESULTS ---------------------------------
+                                div [][ div [ style "background-color" "YELLOW"][ text "AVATARS" ]]
+                                , div[]
+                                    (map (\p ->
+                                         div[][   
+                                                    -- --- Name --------------------- 
+                                                    div []
+                                                        [
+                                                            input [ onInput SetPlayerName, placeholder "Your name here" ][]
+                                                       ],
+
+                                                div [style "margin-top" "10px"][
+                                                    text p.name
+                                                ],
+                                                div[
+                                                    style "display" "flex",
+                                                    style "justify-content" "center", 
+                                                    style "height" (toPx cZoomAvatar (cHeight-2*cMargin))
+                                                    ]
+                                                    [
+                                                        displayAvatarCard p.avatar Absolute,
+                                                        displayAvatarCard p.avatarStyle Absolute
+                                                    ]
+                                            ]
+                                            ) model.players
+                                    )
+                                -- div [
+                                --     style "display" "flex"
+                                --     --, style "flex-direction" "column"
+                                -- ]
+                                -- div[]
+                                --     (map (\p ->
+                                --             div[style "display" "flex", style "border" "solid"][
+                                --                 div[][ text "PLAYERS 1"],
+                                --                 div[][
+                                --                     displayAvatarCard p.avatar Absolute,
+                                --                     displayAvatarCard p.avatarStyle Absolute
+                                --                 ]
+                                --             ]
+                                --         ) model.players
+                         --)
+
+                            ]
+
+                    ]
+
+
+
+                    -- --- Name --------------------- 
+                    -- , div []
+                    --     [
+                    --         h3 [ style "background-color" "YELLOW"][ text "Enter your name"]
+                    --         , input [ onInput SetPlayerName, placeholder "Your name here" ][]
+                    -- ]
+                    -- --- AVATAR --------------------- 
+                    -- , div [][
+                    --     h3 [ style "background-color" "YELLOW"][ text "Choose your avatar"]
+                    --     , div [style "display" "flex", style "justify-content" "center"]
+                    --             (map (\v -> 
+                    --                     div [ onClick (SetAvatar v) ]
+                    --                         [displayAvatarCard (getCard v Red) Static]
+                    --                  )
+                    --                  (range 1 3))
+                    --            ]
+                    -- --- STYLE --------------------- 
+                    -- , div [][
+                    --     h3 [ style "background-color" "YELLOW"][ text "Choose your style"]
+                    --     , div [style "display" "flex", style "justify-content" "center"]
+                    --             (map (\v -> 
+                    --                     div [ onClick (SetAvatarStyle v) ]
+                    --                         [displayAvatarCard (getCard v Black) Static]
+                    --                  )
+                    --                  (range 1 2))
+                    --            ]
+                    -- , div [][
+                    --     h3 [ style "background-color" "YELLOW"][ text "To submit your choice, click on your Avatar card below " ]
+                    --     , div [style "display" "flex", style "justify-content" "center",  onClick (ValiderAvatar playerId)]
+                    --           [
+                    --             displayAvatarCard (getCard model.inputAvatar Red) Absolute,
+                    --             displayAvatarCard (getCard model.inputAvatarStyle Black) Absolute
+                    --           ]
+                    --         ]
+                    -- , hr[][]
+                    -- , div []
+                    --     [h3 [ style "background-color" "YELLOW"][ text "AVATAR" ]]
+                    -- , div [style "display" "flex", style "justify-content" "center"]
+                    --     (map (\p ->
+                    --             div[][
+                    --                 displayAvatarCard p.avatar Absolute,
+                    --                 displayAvatarCard p.avatarStyle Absolute
+                    --             ]
+                    --         ) model.players
+                    --     )
+
+                    -- , button [ onClick RequestedStartGame ] [ text "Let's start"]
+                ]
+    ]
+
+ 
 
 playingView : Game -> Html Msg
 playingView game =
@@ -625,6 +833,8 @@ noPlayer =
     { id = 0
     , name = "NoBody"
     , hand = []
+    , avatar = card_Back
+    , avatarStyle = card_Back
     }
 
 card_Pass : Card 
@@ -679,8 +889,8 @@ card_DrawGenerate =
 card_Player : Int -> Card
 card_Player n =
     { id = 0
-    , value = 9+n
-    , color = Black
+    , value = n
+    , color = Red
     }
 
 card_NextUp : Card
@@ -697,7 +907,13 @@ card_NextDown =
     , color = Black
     }
 
-
+getCard : Int -> Color -> Card
+getCard v c = 
+    {
+          id=0
+        , value=v
+        , color=c
+    }
 --------------- DEFAULT 
 
 headPlayer : List Player -> Player
@@ -770,7 +986,7 @@ displayPlayer player mainCard currentPlayer drawing penality reverse =
             , span [] [ text " - " ]
             ]
         , div
-            [
+            [   style "height" (toPx cZoomAvatar (cHeight+2*10)),
                 style "display" "flex",
                 let 
                     isCurrentPlayer=currentPlayer==player
@@ -787,7 +1003,10 @@ displayPlayer player mainCard currentPlayer drawing penality reverse =
                             style "background-color" "WHITE"
             ]
             [ 
-                div[style "flex" "1", style "margin-bottom" "10px", style "margin-left" "50px"][ displayAvatarCard (card_Player player.id) ],
+                div[style "flex" "1", style "margin-bottom" "10px", style "margin-left" "50px"][
+                    displayAvatarCard (player.avatar) Absolute,
+                    displayAvatarCard (player.avatarStyle) Absolute
+                    ],
                 div[style "flex" "10", style "margin-top" "10px", style "margin-bottom" "10px",
                         style "display" "flex",
                         style "justify-content" "flex-end",
@@ -1024,7 +1243,10 @@ view : Model -> Html Msg
 view model =
     case model of
         NotStarted ->
-            notStartedView
+            homeView
+
+        SettingAvatar avatars ->
+            setAvatarView avatars
 
         Playing game ->
             playingView game
@@ -1103,18 +1325,32 @@ update msg model =
                   originStack = drawStackInit
                 , mainCard = firstCard shuffleCards
                 , players = initHandOfPlayers ( drop 1 shuffleCards) game.players
-                , drawStack = take 3 (drop (nbCardsByPlayer * nbPlayers + 1) shuffleCards)
+                , drawStack = take limitedDrawCards (drop (nbCardsByPlayer * nbPlayers + 1) shuffleCards)
                 , discardStack = firstCard shuffleCards :: []
                 }
                 , Cmd.none)
+
+        ( RequestSetAvatar, _ ) ->
+            let 
+                avatar = avatarToBeSet playersInit
+            in
+            (SettingAvatar 
+                {
+                    inputName = "noname",
+                    players = playersInit,
+                    inputAvatar = 0,
+                    inputAvatarStyle = 0
+                }
+                , Cmd.none
+            )
      
-        ( RequestedStartGame, _ ) ->
+        ( RequestedStartGame, SettingAvatar avatarModel ) ->
             (Playing
                 {
                   originStack = []
                 , mainCard = card_Back
                 , reverse = ToRight  
-                , players = playersInit
+                , players = avatarModel.players
                 , drawStack = []
                 , discardStack =  []
                 , drawing = 1
@@ -1238,6 +1474,51 @@ update msg model =
                     , penality = coloredWildCard.value==13
                 }
             , Cmd.none    
+            )
+
+        ( SetPlayerName pseudo, SettingAvatar playerModel ) ->
+            ( SettingAvatar
+                { playerModel |
+                    inputName = pseudo
+                }
+            , Cmd.none
+            )
+
+        ( SetAvatar value, SettingAvatar playerModel )  ->
+            ( SettingAvatar
+                { playerModel |
+                    inputAvatar = value
+                }
+            , Cmd.none
+            )
+
+        ( SetAvatarStyle value, SettingAvatar playerModel )  ->
+            ( SettingAvatar
+                { playerModel |
+                    inputAvatarStyle = value
+                }
+            , Cmd.none
+            )
+
+        (ValiderAvatar id, SettingAvatar playerModel ) ->
+            ( SettingAvatar
+                { playerModel | players = map (\p -> if p.id==id then
+                                                    { 
+                                                                id = id,
+                                                                avatar = getCard playerModel.inputAvatar Red,
+                                                                avatarStyle = getCard playerModel.inputAvatarStyle Black,
+                                                                hand = [],
+                                                                name = playerModel.inputName
+                                                    }
+                                                else
+                                                    p
+                                    ) playerModel.players
+                                , inputAvatar = 0
+                                , inputAvatarStyle = 0
+                                , inputName = ""
+
+                                 }
+            , Cmd.none
             )
 
         ( DoNothing, _ ) ->
