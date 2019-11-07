@@ -1,11 +1,10 @@
 module Views.GameOver exposing (..)
 
-import Types exposing(Player, Msg, Reverse (..))
-import Html exposing (Html)
-import Html exposing (div, h1, h2, hr, text)
-import Functions exposing (..)
-import Displays exposing (displayPlayers, displayWinner)
 import Constants exposing (..)
+import Displays exposing (displayPlayers, displayWinner)
+import Functions exposing (..)
+import Html exposing (Html, div, h1, h2, hr, text)
+import Types exposing (Msg, Player, Reverse(..))
 
 
 gameOver : List Player -> Html Msg

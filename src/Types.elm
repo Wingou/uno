@@ -1,5 +1,6 @@
 module Types exposing (..)
 
+
 type CardState
     = Playabled
     | NotPlayabled
@@ -19,14 +20,17 @@ type Color
     | Yellow
     | Black
 
+
 type StackShadow
-    = Right 
+    = Right
     | Left
 
+
 type Position
-    = Absolute 
-    | Relative 
+    = Absolute
+    | Relative
     | Static
+
 
 type alias Card =
     { id : Int
@@ -43,11 +47,15 @@ type alias Player =
     , avatarStyle : Card
     }
 
-type Reverse = ToRight | ToLeft | ToStay
+
+type Reverse
+    = ToRight
+    | ToLeft
+    | ToStay
+
 
 type alias Game =
-    { 
-      originStack : List Card
+    { originStack : List Card
     , mainCard : Card
     , reverse : Reverse
     , players : List Player
@@ -57,14 +65,13 @@ type alias Game =
     , penality : Bool
     }
 
-type alias PlayerModel =
-    {
-        inputName : String,
-        inputAvatar : Int,
-        inputAvatarStyle : Int,
-        players : List Player
-    }
 
+type alias PlayerModel =
+    { inputName : String
+    , inputAvatar : Int
+    , inputAvatarStyle : Int
+    , players : List Player
+    }
 
 
 type Msg

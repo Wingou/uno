@@ -1,18 +1,15 @@
+module Views.Playing exposing (..)
 
-module Views.Playing exposing(..)
-
-import Types exposing (..)
-import Html exposing (Html, div, hr, h4, text)
-import Html.Attributes exposing (style)
 import Displays exposing (..)
-
+import Html exposing (Html, div, h4, hr, text)
+import Html.Attributes exposing (style)
+import Types exposing (..)
 
 
 playingView : Game -> Html Msg
 playingView game =
     div [ style "background-color" "AZURE" ]
-        [ 
-         displayHeaderBoard game
+        [ displayHeaderBoard game
         , displayPlayers game.players game.mainCard game.drawing game.penality game.reverse
         , hr [] []
         , div []
@@ -20,4 +17,3 @@ playingView game =
             , h4 [] [ text "UNO - Workshop ELM - October 2019" ]
             ]
         ]
-
