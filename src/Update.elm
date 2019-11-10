@@ -2,7 +2,8 @@ module Update exposing (..)
 
 import Constants exposing (..)
 import Functions exposing (..)
-import List exposing (append, drop, map, range, reverse, take)
+import List exposing (append, drop, head, map, range, reverse, take)
+import Maybe exposing (withDefault)
 import Random
 import Types exposing (..)
 
@@ -10,6 +11,53 @@ import Types exposing (..)
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model ) of
+        ( DemandeNewAvatarId, _ ) ->
+            ( model, Random.generate DistributeAvatar randomAvatarId )
+
+        ( DemandeNewAvatarStyleId, _ ) ->
+            ( model, Random.generate DistributeAvatarStyle randomAvatarStyleId )
+
+        ( DistributeAvatar randomAvatarId, SettingAvatar avatarModel ) ->
+            ( SettingAvatar
+                { avatarModel
+                    | neoPlayers =
+                        map
+                            (\p ->
+                                { p
+                                    | avatar =
+                                        if not p.isNeoPlayerChecked then
+                                            getCard (withDefault 1 (head (drop (p.id - 1) randomAvatarId))) Red
+
+                                        else
+                                            p.avatar
+                                }
+                            )
+                            avatarModel.neoPlayers
+                }
+            , Random.generate DistributeAvatarStyle randomAvatarStyleId
+            )
+
+        ( DistributeAvatarStyle randomAvatarStyleId, SettingAvatar avatarModel ) ->
+            ( SettingAvatar
+                { avatarModel
+                    | neoPlayers =
+                        map
+                            (\p ->
+                                { p
+                                    | avatarStyle =
+                                        if not p.isNeoPlayerChecked then
+                                            getCard (withDefault 1 (head (drop (p.id - 1) randomAvatarStyleId))) Black
+
+                                        else
+                                            p.avatarStyle
+                                    , isNeoPlayerChecked = True
+                                }
+                            )
+                            avatarModel.neoPlayers
+                }
+            , Cmd.none
+            )
+
         ( DemandeNewListCards, _ ) ->
             ( model, Random.generate DistributeDrawStack newIndicesGenerator )
 
@@ -30,15 +78,12 @@ update msg model =
             )
 
         ( RequestSetAvatar, _ ) ->
-            let
-                avatar =
-                    avatarToBeSet playersInit
-            in
             ( SettingAvatar
-                { inputName = "noname"
-                , players = playersInit
+                { inputName = ""
+                , neoPlayers = neoPlayersInit
                 , inputAvatar = 0
                 , inputAvatarStyle = 0
+                , avatarId = 0
                 }
             , Cmd.none
             )
@@ -48,7 +93,17 @@ update msg model =
                 { originStack = []
                 , mainCard = card_Back
                 , reverse = ToRight
-                , players = avatarModel.players
+                , players =
+                    map
+                        (\a ->
+                            { avatar = a.avatar
+                            , avatarStyle = a.avatarStyle
+                            , hand = []
+                            , id = a.id
+                            , name = a.name
+                            }
+                        )
+                        avatarModel.neoPlayers
                 , drawStack = []
                 , discardStack = []
                 , drawing = 1
@@ -212,27 +267,68 @@ update msg model =
         ( ValiderAvatar id, SettingAvatar playerModel ) ->
             ( SettingAvatar
                 { playerModel
-                    | players =
+                    | neoPlayers =
                         map
                             (\p ->
                                 if p.id == id then
-                                    { id = id
-                                    , avatar = getCard playerModel.inputAvatar Red
-                                    , avatarStyle = getCard playerModel.inputAvatarStyle Black
-                                    , hand = []
-                                    , name = playerModel.inputName
+                                    { p
+                                        | avatar = getCard playerModel.inputAvatar Red
+                                        , avatarStyle = getCard playerModel.inputAvatarStyle Black
+                                        , name = playerModel.inputName
+                                        , isNeoPlayerChecked = True
                                     }
 
                                 else
                                     p
                             )
-                            playerModel.players
+                            playerModel.neoPlayers
+                    , avatarId = 0
                     , inputAvatar = 0
                     , inputAvatarStyle = 0
                     , inputName = ""
                 }
             , Cmd.none
             )
+
+        ( SetAvataring neoPlayer, SettingAvatar playerModel ) ->
+            let
+                avatarId =
+                    neoPlayer.id
+
+                inputAvatar =
+                    neoPlayer.avatar.value
+
+                inputAvatarStyle =
+                    neoPlayer.avatarStyle.value
+
+                inputName =
+                    neoPlayer.name
+            in
+            ( SettingAvatar
+                { playerModel
+                    | avatarId = avatarId
+                    , inputAvatar = inputAvatar
+                    , inputAvatarStyle = inputAvatarStyle
+                    , inputName = inputName
+                    , neoPlayers =
+                        map
+                            (\p ->
+                                { p
+                                    | isNeoPlayerChecked =
+                                        if avatarId == p.id then
+                                            False
+
+                                        else
+                                            p.isNeoPlayerChecked
+                                }
+                            )
+                            playerModel.neoPlayers
+                }
+            , Cmd.none
+            )
+
+        ( RandomizeAvatar, SettingAvatar playerModel ) ->
+            ( SettingAvatar playerModel, Random.generate DistributeAvatar randomAvatarId )
 
         ( DoNothing, _ ) ->
             ( model, Cmd.none )

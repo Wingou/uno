@@ -10,7 +10,7 @@ type ImageString
 
 imgStars : ImageString
 imgStars =
-    image "stars.png"
+    image "stars2.png"
 
 
 panelCards : ImageString

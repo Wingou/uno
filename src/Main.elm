@@ -28,18 +28,13 @@ view : Model -> Html Msg
 view model =
     case model of
         NotStarted ->
-       
-
-
-
             homeView
 
+        SettingAvatar avatars ->
+            setAvatarView avatars
 
-                            SettingAvatar avatars ->
-                                setAvatarView avatars
-
-                            Playing game ->
-                                playingView game
+        Playing game ->
+            playingView game
 
         GameOver players ->
             gameOver players

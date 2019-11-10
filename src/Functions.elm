@@ -111,16 +111,6 @@ omitPlayedCard cardToOmit allPlayers =
     map (\p -> { p | hand = omitCard cardToOmit p.hand }) allPlayers
 
 
-avatarToBeSet : List Player -> Player
-avatarToBeSet listPlayers =
-    case head <| filter (\p -> p.name == "noname") <| listPlayers of
-        Just p ->
-            p
-
-        Nothing ->
-            noPlayer
-
-
 initHandOfPlayers : List Card -> List Player -> List Player
 initHandOfPlayers cards players =
     map (\p -> { p | hand = take nbCardsByPlayer (drop (nbCardsByPlayer * (p.id - 1)) cards) }) players
@@ -175,6 +165,16 @@ tailCard cards =
 
         Nothing ->
             []
+
+
+randomAvatarId : Random.Generator (List Int)
+randomAvatarId =
+    Random.list nbPlayers (Random.int 1 nbAvatars)
+
+
+randomAvatarStyleId : Random.Generator (List Int)
+randomAvatarStyleId =
+    Random.list nbPlayers (Random.int 1 nbAvatarsStyles)
 
 
 newIndicesGenerator : Random.Generator (List Int)

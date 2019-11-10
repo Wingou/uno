@@ -66,11 +66,21 @@ type alias Game =
     }
 
 
-type alias PlayerModel =
+type alias AvatarModel =
     { inputName : String
     , inputAvatar : Int
     , inputAvatarStyle : Int
-    , players : List Player
+    , neoPlayers : List NeoPlayer
+    , avatarId : Int
+    }
+
+
+type alias NeoPlayer =
+    { id : Int
+    , name : String
+    , avatar : Card
+    , avatarStyle : Card
+    , isNeoPlayerChecked : Bool
     }
 
 
@@ -90,10 +100,16 @@ type Msg
     | SetAvatar Int
     | SetAvatarStyle Int
     | ValiderAvatar Int
+    | SetAvataring NeoPlayer
+    | RandomizeAvatar
+    | DistributeAvatar (List Int)
+    | DistributeAvatarStyle (List Int)
+    | DemandeNewAvatarId
+    | DemandeNewAvatarStyleId
 
 
 type Model
     = NotStarted
-    | SettingAvatar PlayerModel
+    | SettingAvatar AvatarModel
     | Playing Game
     | GameOver (List Player)

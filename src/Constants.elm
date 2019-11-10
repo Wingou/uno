@@ -1,6 +1,6 @@
 module Constants exposing (..)
 
-import Types exposing (Card, Color(..), Player)
+import Types exposing (Card, Color(..), NeoPlayer, Player)
 
 
 stackThickness : Int
@@ -8,25 +8,25 @@ stackThickness =
     6
 
 
-playersInit : List Player
-playersInit =
+neoPlayersInit : List NeoPlayer
+neoPlayersInit =
     [ { id = 1
-      , name = "noname"
-      , hand = []
-      , avatar = card_Back
-      , avatarStyle = card_Back
+      , name = "Player 1"
+      , avatar = card_noAvatar
+      , avatarStyle = card_noAvatarStyle
+      , isNeoPlayerChecked = False
       }
     , { id = 2
-      , name = "noname"
-      , hand = []
-      , avatar = card_Back
-      , avatarStyle = card_Back
+      , name = "Player 2"
+      , avatar = card_noAvatar
+      , avatarStyle = card_noAvatarStyle
+      , isNeoPlayerChecked = False
       }
     , { id = 3
-      , name = "noname"
-      , hand = []
-      , avatar = card_Back
-      , avatarStyle = card_Back
+      , name = "Player 3"
+      , avatar = card_noAvatar
+      , avatarStyle = card_noAvatarStyle
+      , isNeoPlayerChecked = False
       }
     ]
 
@@ -55,6 +55,16 @@ nbCardsByColor =
 -- (0 à 9 + double + Sens + Pass)*2
 
 
+nbAvatars : Int
+nbAvatars =
+    10
+
+
+nbAvatarsStyles : Int
+nbAvatarsStyles =
+    10
+
+
 nbPlayers : Int
 nbPlayers =
     3
@@ -72,6 +82,16 @@ noPlayer =
     , hand = []
     , avatar = card_Back
     , avatarStyle = card_Back
+    }
+
+
+noNeoPlayer : NeoPlayer
+noNeoPlayer =
+    { id = 0
+    , name = "NoBody"
+    , avatar = card_Back
+    , avatarStyle = card_Back
+    , isNeoPlayerChecked = False
     }
 
 
@@ -143,6 +163,22 @@ card_NextDown : Card
 card_NextDown =
     { id = 0
     , value = 9
+    , color = Black
+    }
+
+
+card_noAvatar : Card
+card_noAvatar =
+    { id = 0
+    , value = 0
+    , color = Red
+    }
+
+
+card_noAvatarStyle : Card
+card_noAvatarStyle =
+    { id = 0
+    , value = 0
     , color = Black
     }
 

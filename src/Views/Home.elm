@@ -10,19 +10,17 @@ import Update exposing (..)
 
 homeView : Html Msg
 homeView =
-    div []
-        [ br [] []
-        , h1 [] [ text "UNO - ELM" ]
-        , button [ onClick RequestSetAvatar ]
-            [ h3 []
-                [ text "  LET'S START...  " ]
+    div [ style "margin-top" "10px" ]
+        [ button [ onClick RequestSetAvatar ]
+            [ div [ style "font-size" "20px" ]
+                [ text "  UNO - ELM   " ]
             ]
         , br [] []
         , br [] []
         , div
             [ style "background-image" ("url(" ++ pathFilename imgStars ++ ")")
             , style "width" "100%"
-            , style "height" "550px"
+            , style "height" "650px"
             , style "background-repeat" "no-repeat"
             , style "background-position" "center"
             , style "background-attachment" "fixed"
