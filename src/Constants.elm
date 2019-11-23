@@ -33,7 +33,16 @@ neoPlayersInit =
 
 limitedDrawCards : Int
 limitedDrawCards =
-    5
+    let
+        nbMax =
+            0
+    in
+    case nbMax of
+        0 ->
+            108
+
+        _ ->
+            nbMax
 
 
 nbBlacks : Int
@@ -49,10 +58,6 @@ nbColors =
 nbCardsByColor : Int
 nbCardsByColor =
     26
-
-
-
--- (0 à 9 + double + Sens + Pass)*2
 
 
 nbAvatars : Int

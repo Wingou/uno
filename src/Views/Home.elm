@@ -4,6 +4,8 @@ import Asset exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick, onInput)
+import Svg exposing (circle)
+import Svg.Attributes exposing (cx, cy, r)
 import Types exposing (Msg(..))
 import Update exposing (..)
 
