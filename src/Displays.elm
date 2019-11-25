@@ -129,14 +129,17 @@ displayPlayer player mainCard currentPlayer drawing penality reverse =
                 isCurrentPlayer =
                     currentPlayer == player
               in
-              case ( isCurrentPlayer, penality ) of
-                ( True, True ) ->
+              case ( isCurrentPlayer, penality, drawing ) of
+                ( _, _, 99 ) ->
+                    style "background-color" "WHITE"
+
+                ( True, True, _ ) ->
                     style "background-color" "RED"
 
-                ( True, False ) ->
+                ( True, False, _ ) ->
                     style "background-color" "GREEN"
 
-                ( False, _ ) ->
+                ( False, _, _ ) ->
                     style "background-color" "WHITE"
             ]
             [ div [ style "flex" "1", style "margin-bottom" "10px", style "margin-left" "50px" ]
@@ -158,7 +161,11 @@ displayPlayer player mainCard currentPlayer drawing penality reverse =
                     displayCards player.hand NotPlayabled
                 ]
             , div [ style "flex" "1", style "margin-top" "10px", style "margin-bottom" "10px" ]
-                [ displayNextCard player mainCard currentPlayer drawing penality reverse
+                [ if drawing == 99 then
+                    text ""
+
+                  else
+                    displayNextCard player mainCard currentPlayer drawing penality reverse
                 ]
             ]
         ]
@@ -566,7 +573,7 @@ displayWinner players =
                     text winner.name
 
                 else
-                    text (winner.name ++ " with " ++ textNbWords winner.pts "point")
+                    text (winner.name ++ " wins " ++ textNbWords winner.pts "point")
 
             Nothing ->
                 text "Nobody wins"

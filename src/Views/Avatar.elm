@@ -88,6 +88,13 @@ displayChooseStyle model =
 
 displayGenerator : AvatarModel -> Html Msg
 displayGenerator model =
+    let
+        playerId =
+            model.avatarId
+
+        isAvatarChosen =
+            model.inputAvatar > 0 && model.inputAvatarStyle > 0 && length model.inputName > 0
+    in
     div [ style "margin" "20px" ]
         [ let
             bgColor =
@@ -97,25 +104,35 @@ displayGenerator model =
             div []
                 [ div [ style "background-color" bgColor ] [ text "ALL THE PLAYERS ARE READY TO START THE GAME !" ]
                 , br [] []
-                , button [ onClick RequestedStartGame ] [ h3 [] [ text "   Let's play" ] ]
+                , button [ onClick RequestedStartGame ] [ h3 [ style "width" "200px" ] [ text "Let's play !" ] ]
                 ]
 
           else if model.avatarId == 0 then
             div []
                 [ div [ style "background-color" bgColor ] [ text "AVATARS GENERATOR" ]
                 , br [] []
-                , button [ style "cursor" "pointer", onClick RandomizeAvatar ] [ text "Auto-Random Avatars Generation" ]
-                , div [] [ text "OR" ]
-                , div [] [ text "Click on the Setting button of a Player" ]
+                , button [ style "cursor" "pointer", onClick RandomizeAvatar ] [ h3 [ style "width" "200px" ] [ text "Auto-Random Avatars Generation" ] ]
+                , div [] [ h3 [] [ text "OR" ] ]
+                , div [] [ h3 [] [ text "Click on the Setting button of a Player" ] ]
                 ]
 
           else
             div []
                 [ div [ style "background-color" bgColor ] [ text "Setting..." ]
                 , br [] []
-                , text "Choose a name, choose an Avatar and a card style."
-                , br [] []
-                , text "To submit your choice click on [I'm ready] !"
+                , if isAvatarChosen then
+                    button
+                        [ onClick (ValiderAvatar playerId)
+                        ]
+                        [ h3 [ style "width" "200px" ] [ text "I'm ready" ]
+                        ]
+
+                  else
+                    div []
+                        [ text "Choose a name, choose an Avatar and a card style."
+                        , br [] []
+                        , text "To submit your choice click on [I'm ready] !"
+                        ]
                 ]
         ]
 
@@ -148,24 +165,35 @@ displaySettingPlayers model =
                           else
                             text p.name
                         ]
-                    , button [ onClick (SetAvataring p) ]
-                        [ text "Setting"
-                        ]
-                    , span [] [ text " " ]
                     , let
-                        readyButtonState =
-                            if playerId == p.id && isAvatarChosen then
+                        settingButtonState =
+                            if playerId == 0 then
                                 "enabled"
 
                             else
                                 "disabled"
                       in
                       button
-                        [ onClick (ValiderAvatar playerId)
-                        , attribute readyButtonState ""
+                        [ onClick (SetAvataring p)
+                        , attribute settingButtonState ""
                         ]
-                        [ text "I'm ready"
+                        [ text "Setting"
                         ]
+                    , span [] [ text " " ]
+
+                    -- , let
+                    --     readyButtonState =
+                    --         if playerId == p.id && isAvatarChosen then
+                    --             "enabled"
+                    --         else
+                    --             "disabled"
+                    --   in
+                    --   button
+                    --     [ onClick (ValiderAvatar playerId)
+                    --     , attribute readyButtonState ""
+                    --     ]
+                    --     [ text "I'm ready"
+                    --     ]
                     , let
                         avatarToDisplay =
                             if playerId == p.id && not p.isNeoPlayerChecked then
